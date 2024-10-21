@@ -8,12 +8,12 @@
 
 1º)  Clone o repositório
 ```
-git clone https://github.com/Taverna-Hub/MeowDungeon.git
+git clone https://github.com/Jeraross/Hotline-Recife.git
 ```
 
 2º)  Entre na pasta do repositório
 ```
-cd MeowDungeon/
+cd Hotline/
 ```
 
 3º)  Compile os arquivos
