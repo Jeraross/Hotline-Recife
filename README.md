@@ -13,7 +13,7 @@ git clone https://github.com/Jeraross/Hotline-Recife.git
 
 2º)  Entre na pasta do repositório
 ```
-cd Hotline/
+cd Hotline-Recife/
 ```
 
 3º)  Compile os arquivos
