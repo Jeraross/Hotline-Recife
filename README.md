@@ -29,6 +29,31 @@ make run
 
 # Equipe:
 
-- [Jerônimo Rossi](https://github.com/Jeraross) - jbr2@cesar.school
-- [Henrique Figueiredo](https://github.com/fthenri) - hft@cesar.school
-- [João Pedro Aguiar](https://github.com/Jp-moraiss) - jpam@cesar.school
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Jeraross">
+        <img src="https://avatars3.githubusercontent.com/Jeraross" width="100px;" alt="Foto de Thomaz"/><br>
+        <sub>
+          <b>Jerônimo Rossi</b>
+        </sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/fthenri">
+        <img src="https://avatars.githubusercontent.com/fthenri" width="100px;" alt="Foto de Pedro"/><br>
+        <sub>
+          <b>Henrique Figueiredo</b>
+        </sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Jp-moraiss">
+        <img src="https://avatars.githubusercontent.com/Jp-moraiss" width="100px;" alt="Foto de Sofia"/><br>
+        <sub>
+          <b>João Pedro Aguiar</b>
+        </sub>
+      </a>
+    </td>
+  </tr>
+</table>
