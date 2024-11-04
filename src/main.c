@@ -1,198 +1,86 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include "screen.h"
 #include "keyboard.h"
-#include <unistd.h>
+#include "timer.h"
 
-#define MAP_WIDTH 40
-#define MAP_HEIGHT 22
-#define MAX_ENEMIES 5  // Número de inimigos
+#define MAP_WIDTH 45
+#define MAP_HEIGHT 21
+#define MAX_ENEMIES 5
+#define MAX_AMMO 10
+#define PLAYER_MAX_HEALTH 3
+#define ENEMY_RESPAWN_INTERVAL 5
+#define ENEMY_COOLDOWN_PERIOD 2  // Tempo que o inimigo fica parado ao colidir com o jogador
 
-// Cores para os elementos do mapa
 #define COLOR_WALL RED
-#define COLOR_DOOR YELLOW
 #define COLOR_FLOOR LIGHTGRAY
 #define COLOR_PLAYER GREEN
 #define COLOR_ENEMY MAGENTA
-#define COLOR_ATTACK CYAN  // Cor para o feedback de ataque
+#define COLOR_ENEMY_HIT YELLOW // Cor temporária quando o inimigo atinge o jogador
+#define COLOR_ATTACK CYAN
 
-// Definição do mapa ampliado
-char **map;
-
-struct Player {
-    int x, y;
-    int hasWeapon;
-    int alive;
-    int lives;
+char map[MAP_HEIGHT][MAP_WIDTH] = {
+    "#############################################",
+    "#############################################",
+    "##                                          #",
+    "##    #            #                        #",
+    "##    #            #                        #",
+    "##    ####  ################   #######      #",
+    "##                         #                #",
+    "##    #######              #                #",
+    "##                         #                #",
+    "##    ######################   ##############",
+    "##                 #                        #",
+    "##       ########  #                        #",
+    "##       #      #           #               #",
+    "##       #      #########   #   ####        #",
+    "##              #           #      #        #",
+    "#######         #           #      #        #",
+    "##                                          #",
+    "##  ####   ####     ###   ####    ####      #",
+    "##                  #        #              #",
+    "##                  #        #              #",
+    "#############################################"
 };
 
+// Definindo a estrutura Player
+typedef struct {
+    int x;
+    int y;
+    int health;
+    int hasWeapon;
+    int ammo;
+} Player;
 
-struct Player player;
-
-int weaponX = 20;
-int weaponY = 10;
-int hasWeapon = 0;
+Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 0}; // Inicializando o jogador
 
 typedef struct {
     int x, y;
     int alive;
+    int cooldown;
 } Enemy;
 
-Enemy enemies[MAX_ENEMIES] = {
-    {5, 5, 1}, {8, 2, 1}, {15, 7, 1}, {30, 15, 1}, {35, 10, 1}
-};
+Enemy enemies[MAX_ENEMIES] = { {5, 5, 1, 0}, {8, 2, 1, 0}, {15, 7, 1, 0}, {30, 15, 1, 0}, {35, 10, 1, 0} };
 
-void freeMap();
-void initMap();
-void screenDrawMap();
-void drawPlayer();
-void drawEnemies();
-void drawWeapon();
-void drawLives(struct Player *player);
-void movePlayer(int dx, int dy);
-void takeDamage(struct Player *player);
-int isOccupiedByEnemy(int x, int y);
-void moveEnemies();
-void showAttackFeedback();
-void playerAttack();
-void playerShoot(int dx, int dy);
+time_t lastEnemySpawn;
 
-
-int main() {
-    keyboardInit();
-    screenInit(0);
-
-    initMap();
-
-    screenDrawMap();
-    player.x = 1;
-    player.y = 1;
-    player.lives = 3;
-    drawPlayer();
-    drawEnemies();
-    drawWeapon();
-    drawLives(&player);
-
-    time_t lastEnemyMove = time(NULL);
-
-    while (1) {
-        if (keyhit()) {
-            char key = readch();
-
-            switch (key) {
-                case 'w': movePlayer(0, -1); break;
-                case 's': movePlayer(0, 1); break;
-                case 'a': movePlayer(-1, 0); break;
-                case 'd': movePlayer(1, 0); break;
-                case ' ': playerAttack(); break;
-                case 'i': playerShoot(0, -1); break;  // Tiro para cima
-                case 'k': playerShoot(0, 1); break;   // Tiro para baixo
-                case 'j': playerShoot(-1, 0); break;  // Tiro para a esquerda
-                case 'l': playerShoot(1, 0); break;   // Tiro para a direita
-                case 'q':
-                    freeMap();  // Libera a memória do mapa antes de sair
-                    keyboardDestroy();
-                    screenDestroy();
-                    return 0;
-            }
-        }
-
-        // Movimento dos inimigos e atualização da tela
-        if (difftime(time(NULL), lastEnemyMove) >= 1) {
-            moveEnemies();
-            lastEnemyMove = time(NULL);
-        }
-
-        screenGotoxy(0, MAP_HEIGHT);
-        fflush(stdout);
-    }
-
-    // Libera a memória do mapa, se o loop terminar
-    freeMap();
-
-    return 0;  // Adicionando retorno 0 para sinalizar que o programa terminou corretamente
-}
-
-void initMap() {
-    map = (char**) malloc(MAP_HEIGHT * sizeof(char*));
-    if (map == NULL) {
-        perror("Failed to allocate memory for the map");
-        exit(EXIT_FAILURE);
-    }
-
-    for (int i = 0; i < MAP_HEIGHT; i++) {
-        map[i] = (char*) malloc(MAP_WIDTH * sizeof(char));
-        if (map[i] == NULL) {
-            perror("Failed to allocate memory for a row of the map");
-            freeMap(); // Libera a memória já alocada
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    const char *mapData[MAP_HEIGHT] = {
-        "########################################",
-        "#    #     D      #              D    #",
-        "#    #            #                   #",
-        "#    ####  ###############  ########  #",
-        "#         D            #              #",
-        "#    #######           #              #",
-        "#       D              #              #",
-        "###  #######################  #########",
-        "#                 #                   #",
-        "#      ########   #       D           #",
-        "###    #      #            #          #",
-        "#      #      ##########   #   ####   #",
-        "#   D          #           #      #   #",
-        "######         #           #      #   #",
-        "#              ####################### #",
-        "#                      D              #",
-        "#  ####   ####    ####   ####    #### #",
-        "#                 #      #             #",
-        "#                 #      #             #",
-        "########################################",
-        "                                        ",
-        "                                        "
-    };
-
-    for (int i = 0; i < MAP_HEIGHT; i++) {
-        for (int j = 0; j < MAP_WIDTH; j++) {
-            map[i][j] = mapData[i][j];
-        }
-    }
-}
-
-void freeMap() {
-    for (int i = 0; i < MAP_HEIGHT; i++) {
-        free(map[i]);
-    }
-    free(map);
-}
-
-
-// Função para desenhar o mapa
 void screenDrawMap() {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             char cell = map[y][x];
+            screenGotoxy(x, y);
 
-            // Escolhe a cor para cada tipo de célula
             switch(cell) {
                 case '#':
                     screenSetColor(COLOR_WALL, BLACK);
-                screenGotoxy(x, y);
-                printf("▣");
-                break;
-                case 'D':
-                    screenSetColor(COLOR_DOOR, BLACK);
-                screenGotoxy(x, y);
-                printf("D");
-                break;
+                    printf("#");
+                    break;
                 default:
                     screenSetColor(COLOR_FLOOR, BLACK);
-                screenGotoxy(x, y);
-                printf(" ");
-                break;
+                    printf(" ");
+                    break;
             }
         }
     }
@@ -200,83 +88,46 @@ void screenDrawMap() {
     fflush(stdout);
 }
 
+void drawHUD() {
+    screenGotoxy(0, MAP_HEIGHT);
+    screenSetColor(WHITE, BLACK);
+    printf("Vida: %d  Munição: %d\n", player.health, player.ammo);
+    fflush(stdout);
+}
 
 void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
     screenGotoxy(player.x, player.y);
-    printf("★");
+    printf("@");
     fflush(stdout);
 }
 
-// Função para desenhar os inimigos
 void drawEnemies() {
-    screenSetColor(COLOR_ENEMY, BLACK);
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (enemies[i].alive) {
             screenGotoxy(enemies[i].x, enemies[i].y);
-            printf("👾");
+
+            if (enemies[i].cooldown > 0) {
+                screenSetColor(COLOR_ENEMY_HIT, BLACK);
+            } else {
+                screenSetColor(COLOR_ENEMY, BLACK);
+            }
+
+            printf("E");
         }
     }
     fflush(stdout);
 }
 
 void drawWeapon() {
-    if (!hasWeapon) {
+    if (!player.hasWeapon) {
         screenSetColor(YELLOW, BLACK);
-        screenGotoxy(weaponX, weaponY);
-        printf("🔫");  // W representa a arma
+        screenGotoxy(20, 10);
+        printf("W");
         fflush(stdout);
     }
 }
 
-void drawLives(struct Player *player) {
-    screenGotoxy(0, 21);  // Escolha uma linha fixa
-    printf("Vidas: %d", player->lives);
-}
-
-
-// Função para mover o jogador
-void movePlayer(int dx, int dy) {
-    int newX = player.x + dx;
-    int newY = player.y + dy;
-
-    if (map[newY][newX] != '#') {
-        screenGotoxy(player.x, player.y);
-        printf(" ");
-
-        player.x = newX;
-        player.y = newY;
-
-        // Verifica se o jogador pegou a arma
-        if (player.x == weaponX && player.y == weaponY) {
-            hasWeapon = 1;
-            screenGotoxy(weaponX, weaponY);
-            printf(" ");  // Remove a arma do mapa
-        }
-
-        drawPlayer();
-    }
-}
-
-void takeDamage(struct Player *player) {
-    if (player->lives > 0){
-        player->lives--;
-        if (player->lives == 0) {
-            player->alive = 0;
-            screenGotoxy(0, 22);
-            printf("Game Over");
-            fflush(stdout);
-            return;
-            } else {
-               screenGotoxy(0, 22);
-               printf("Você perdeu uma vida! Vidas restantes: %d", player->lives);
-               fflush(stdout);
-            }
-        }
-    }
-
-
-// Função para verificar se uma posição está ocupada por outro inimigo
 int isOccupiedByEnemy(int x, int y) {
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (enemies[i].alive && enemies[i].x == x && enemies[i].y == y) {
@@ -286,54 +137,90 @@ int isOccupiedByEnemy(int x, int y) {
     return 0;
 }
 
-// Função para mover inimigos em direção ao jogador
+void movePlayer(int dx, int dy) {
+    int newX = player.x + dx;
+    int newY = player.y + dy;
+
+    if (map[newY][newX] != '#' && !isOccupiedByEnemy(newX, newY)) {
+        screenGotoxy(player.x, player.y);
+        printf(" ");
+
+        player.x = newX;
+        player.y = newY;
+
+        if (player.x == 20 && player.y == 10) { // Verificando a coleta da arma
+            player.hasWeapon = 1;
+            player.ammo = MAX_AMMO;
+            screenGotoxy(20, 10);
+            printf(" ");
+        }
+
+        drawPlayer();
+    }
+}
+
 void moveEnemies() {
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) continue;
 
-        screenGotoxy(enemies[i].x, enemies[i].y);
-        printf(" ");
-
-        int newX = enemies[i].x;
-        int newY = enemies[i].y;
-
-        if (enemies[i].x < player.x) {
-            if (map[enemies[i].y][enemies[i].x + 1] != '#' && !isOccupiedByEnemy(enemies[i].x + 1, enemies[i].y)) {
-                newX++;
-            }
-        } else if (enemies[i].x > player.x) {
-            if (map[enemies[i].y][enemies[i].x - 1] != '#' && !isOccupiedByEnemy(enemies[i].x - 1, enemies[i].y)) {
-                newX--;
-            }
+        if (enemies[i].cooldown > 0) {
+            enemies[i].cooldown--;
+            continue;
         }
 
-        if (newX == enemies[i].x) { // Adicionado '{' para iniciar o bloco
-            if (enemies[i].y < player.y) {
-                if (map[enemies[i].y + 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y + 1)) {
-                    newY++;
-                }
-            } else if (enemies[i].y > player.y) {
-                // Corrigido para adicionar '{' e '}' ao redor do código da condição
-                if (map[enemies[i].y - 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y - 1)) {
-                    newY--;
-                }
+        int dx = 0, dy = 0;
+
+        if (map[enemies[i].y][enemies[i].x + 1] != '#' && enemies[i].x < player.x) dx = 1;
+        else if (map[enemies[i].y][enemies[i].x - 1] != '#' && enemies[i].x > player.x) dx = -1;
+
+        if (map[enemies[i].y + 1][enemies[i].x] != '#' && enemies[i].y < player.y) dy = 1;
+        else if (map[enemies[i].y - 1][enemies[i].x] != '#' && enemies[i].y > player.y) dy = -1;
+
+        int nextX = enemies[i].x + dx;
+        int nextY = enemies[i].y + dy;
+
+        if (nextX == player.x && nextY == player.y) {
+            player.health--;
+            enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
+            drawHUD();
+
+            if (player.health <= 0) {
+                printf("Game Over!\n");
+                exit(0);
             }
+            continue;
         }
 
-        enemies[i].x = newX;
-        enemies[i].y = newY;
-
-        if (enemies[i].alive && enemies[i].y == player.y && enemies[i].x == player.x) {
-            takeDamage(&player);
+        if (map[nextY][nextX] != '#' && !isOccupiedByEnemy(nextX, nextY)) {
+            screenGotoxy(enemies[i].x, enemies[i].y);
+            printf(" ");
+            enemies[i].x = nextX;
+            enemies[i].y = nextY;
         }
-
     }
     drawEnemies();
 }
 
+void spawnEnemies() {
+    if (difftime(time(NULL), lastEnemySpawn) < ENEMY_RESPAWN_INTERVAL) return;
 
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (!enemies[i].alive) {
+            int spawnX, spawnY;
+            do {
+                spawnX = rand() % MAP_WIDTH;
+                spawnY = rand() % MAP_HEIGHT;
+            } while (isOccupiedByEnemy(spawnX, spawnY) || abs(spawnX - player.x) < 5 || abs(spawnY - player.y) < 5 || map[spawnY][spawnX] == '#');
 
-// Função para exibir feedback visual do ataque ao redor do jogador
+            enemies[i].x = spawnX;
+            enemies[i].y = spawnY;
+            enemies[i].alive = 1;
+            lastEnemySpawn = time(NULL);
+            break;
+        }
+    }
+}
+
 void showAttackFeedback() {
     screenSetColor(COLOR_ATTACK, BLACK);
     for (int dy = -1; dy <= 1; dy++) {
@@ -351,7 +238,6 @@ void showAttackFeedback() {
     fflush(stdout);
 }
 
-// Função para ataque com feedback visual
 void playerAttack() {
     showAttackFeedback();
 
@@ -362,64 +248,110 @@ void playerAttack() {
             screenGotoxy(enemies[i].x, enemies[i].y);
             printf(" ");
             enemies[i].alive = 0;
+
         }
     }
-
     screenGotoxy(player.x, player.y);
     drawPlayer();
 
-    usleep(200000);  // Aguarda para mostrar o feedback visual
-    screenDrawMap();  // Redesenha o mapa para remover o feedback
+    usleep(50000);  // Aguarda para mostrar o feedback visual
+    screenDrawMap();
     drawPlayer();
     drawEnemies();
     drawWeapon();
 }
 
 void playerShoot(int dx, int dy) {
-    if (!hasWeapon) return;  // Só pode atirar se tiver a arma
+    if (!player.hasWeapon || player.ammo <= 0) return;
 
     int x = player.x + dx;
     int y = player.y + dy;
-    int range = 5;  // Alcance máximo do tiro
+    int range = 5;
+    player.ammo--;
 
-    // Define o caractere do tiro com base na direção
-    char shotChar = (dx == 0) ? '|' : '-';  // '|' para tiro vertical, '-' para horizontal
+    char shotChar = (dx == 0) ? '|' : '-';
 
-    screenSetColor(CYAN, BLACK);  // Cor do tiro
+    screenSetColor(CYAN, BLACK);
 
     for (int step = 0; step < range; step++) {
         if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT || map[y][x] == '#') {
-            break;  // Sai do loop se o tiro atingir um obstáculo ou o limite do mapa
+            break;
         }
 
         screenGotoxy(x, y);
-        printf("%c", shotChar);  // Exibe o tiro
+        printf("%c", shotChar);
         fflush(stdout);
-        usleep(50000);  // Pausa para a animação do tiro
+        usleep(50000);
 
-        // Verifica se atingiu algum inimigo
         for (int i = 0; i < MAX_ENEMIES; i++) {
             if (enemies[i].alive && enemies[i].x == x && enemies[i].y == y) {
                 enemies[i].alive = 0;
                 screenGotoxy(x, y);
-                printf(" ");  // Remove o inimigo atingido
-                return;  // Termina o disparo após atingir um inimigo
+                printf(" ");
+                return;
             }
         }
 
-        // Apaga o caractere de tiro da célula anterior
         screenGotoxy(x, y);
         printf(" ");
         fflush(stdout);
 
-        // Move o tiro para a próxima posição
         x += dx;
         y += dy;
     }
 
-    screenDrawMap();  // Redesenha o mapa para remover o último tiro
+    screenDrawMap();
     drawPlayer();
     drawEnemies();
 }
 
+void reload() {
+    player.ammo = MAX_AMMO;
+    drawHUD();
+}
 
+int main() {
+    keyboardInit();
+    screenInit(0);
+    srand(time(NULL));
+
+    screenDrawMap();
+    drawPlayer();
+    drawEnemies();
+    drawWeapon();
+    drawHUD();
+
+    time_t lastEnemyMove = time(NULL);
+    lastEnemySpawn = time(NULL);
+
+    while (1) {
+        if (keyhit()) {
+            char key = readch();
+
+            switch (key) {
+                case 'w': movePlayer(0, -1); break;
+                case 's': movePlayer(0, 1); break;
+                case 'a': movePlayer(-1, 0); break;
+                case 'd': movePlayer(1, 0); break;
+                case ' ': playerAttack(); break;
+                case 'i': playerShoot(0, -1); break;
+                case 'k': playerShoot(0, 1); break;
+                case 'j': playerShoot(-1, 0); break;
+                case 'l': playerShoot(1, 0); break;
+                case 'r': reload(); break;
+                case 'q':
+                    keyboardDestroy();
+                    screenDestroy();
+                    return 0;
+            }
+        }
+
+        if (difftime(time(NULL), lastEnemyMove) >= 1) {
+            moveEnemies();
+            lastEnemyMove = time(NULL);
+        }
+
+        spawnEnemies();
+        drawHUD();
+    }
+}
