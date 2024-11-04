@@ -66,6 +66,66 @@ Enemy enemies[MAX_ENEMIES] = { {5, 5, 1, 0}, {8, 2, 1, 0}, {15, 7, 1, 0}, {30, 1
 
 time_t lastEnemySpawn;
 
+void screenDrawMap();
+void drawHUD();
+void drawPlayer();
+void drawEnemies();
+void drawWeapon();
+int isOccupiedByEnemy(int x, int y);
+void movePlayer(int dx, int dy);
+void moveEnemies();
+void spawnEnemies();
+void showAttackFeedback();
+void playerAttack();
+void playerShoot(int dx, int dy);
+void reload();
+
+
+int main() {
+    keyboardInit();
+    screenInit(0);
+    srand(time(NULL));
+
+    screenDrawMap();
+    drawPlayer();
+    drawEnemies();
+    drawWeapon();
+    drawHUD();
+
+    time_t lastEnemyMove = time(NULL);
+    lastEnemySpawn = time(NULL);
+
+    while (1) {
+        if (keyhit()) {
+            char key = readch();
+
+            switch (key) {
+                case 'w': movePlayer(0, -1); break;
+                case 's': movePlayer(0, 1); break;
+                case 'a': movePlayer(-1, 0); break;
+                case 'd': movePlayer(1, 0); break;
+                case ' ': playerAttack(); break;
+                case 'i': playerShoot(0, -1); break;
+                case 'k': playerShoot(0, 1); break;
+                case 'j': playerShoot(-1, 0); break;
+                case 'l': playerShoot(1, 0); break;
+                case 'r': reload(); break;
+                case 'q':
+                    keyboardDestroy();
+                    screenDestroy();
+                    return 0;
+            }
+        }
+
+        if (difftime(time(NULL), lastEnemyMove) >= 1) {
+            moveEnemies();
+            lastEnemyMove = time(NULL);
+        }
+
+        spawnEnemies();
+        drawHUD();
+    }
+}
 void screenDrawMap() {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
@@ -308,50 +368,4 @@ void playerShoot(int dx, int dy) {
 void reload() {
     player.ammo = MAX_AMMO;
     drawHUD();
-}
-
-int main() {
-    keyboardInit();
-    screenInit(0);
-    srand(time(NULL));
-
-    screenDrawMap();
-    drawPlayer();
-    drawEnemies();
-    drawWeapon();
-    drawHUD();
-
-    time_t lastEnemyMove = time(NULL);
-    lastEnemySpawn = time(NULL);
-
-    while (1) {
-        if (keyhit()) {
-            char key = readch();
-
-            switch (key) {
-                case 'w': movePlayer(0, -1); break;
-                case 's': movePlayer(0, 1); break;
-                case 'a': movePlayer(-1, 0); break;
-                case 'd': movePlayer(1, 0); break;
-                case ' ': playerAttack(); break;
-                case 'i': playerShoot(0, -1); break;
-                case 'k': playerShoot(0, 1); break;
-                case 'j': playerShoot(-1, 0); break;
-                case 'l': playerShoot(1, 0); break;
-                case 'r': reload(); break;
-                case 'q':
-                    keyboardDestroy();
-                    screenDestroy();
-                    return 0;
-            }
-        }
-
-        if (difftime(time(NULL), lastEnemyMove) >= 1) {
-            moveEnemies();
-            lastEnemyMove = time(NULL);
-        }
-
-        spawnEnemies();
-        drawHUD();
-    }
 }
