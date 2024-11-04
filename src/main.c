@@ -11,7 +11,7 @@
 #define MAX_ENEMIES 5
 #define MAX_AMMO 10
 #define PLAYER_MAX_HEALTH 3
-#define ENEMY_RESPAWN_INTERVAL 5
+#define ENEMY_RESPAWN_INTERVAL 2
 #define ENEMY_COOLDOWN_PERIOD 2  // Tempo que o inimigo fica parado ao colidir com o jogador
 
 #define COLOR_WALL RED
@@ -222,19 +222,26 @@ void movePlayer(int dx, int dy) {
 void moveEnemies() {
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) continue;
-
         if (enemies[i].cooldown > 0) {
             enemies[i].cooldown--;
             continue;
         }
 
         int dx = 0, dy = 0;
+        int randomMove = rand() % 100;
 
-        if (map[enemies[i].y][enemies[i].x + 1] != '#' && enemies[i].x < player.x) dx = 1;
-        else if (map[enemies[i].y][enemies[i].x - 1] != '#' && enemies[i].x > player.x) dx = -1;
+        if (randomMove < 20) {
+            // 20% de chance de movimento aleatório
+            dx = (rand() % 3) - 1;
+            dy = (rand() % 3) - 1;
+        } else {
+            // Persegue o jogador
+            if (map[enemies[i].y][enemies[i].x + 1] != '#' && enemies[i].x < player.x) dx = 1;
+            else if (map[enemies[i].y][enemies[i].x - 1] != '#' && enemies[i].x > player.x) dx = -1;
 
-        if (map[enemies[i].y + 1][enemies[i].x] != '#' && enemies[i].y < player.y) dy = 1;
-        else if (map[enemies[i].y - 1][enemies[i].x] != '#' && enemies[i].y > player.y) dy = -1;
+            if (map[enemies[i].y + 1][enemies[i].x] != '#' && enemies[i].y < player.y) dy = 1;
+            else if (map[enemies[i].y - 1][enemies[i].x] != '#' && enemies[i].y > player.y) dy = -1;
+        }
 
         int nextX = enemies[i].x + dx;
         int nextY = enemies[i].y + dy;
@@ -243,7 +250,6 @@ void moveEnemies() {
             player.health--;
             enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
             drawHUD();
-
             if (player.health <= 0) {
                 printf("Game Over!\n");
                 exit(0);
@@ -260,6 +266,7 @@ void moveEnemies() {
     }
     drawEnemies();
 }
+
 
 void spawnEnemies() {
     if (difftime(time(NULL), lastEnemySpawn) < ENEMY_RESPAWN_INTERVAL) return;
