@@ -53,3 +53,12 @@ dkms.conf
 
 #vscode
 .vscode
+
+# Diretório .idea (configurações do CLion específicas do projeto)
+.idea/
+
+# Diretório cmake-build-* (builds criados pelo CMake dentro do CLion)
+cmake-build-*/
+CMakeLists.txt
+# Logs de execução do CLion
+*.log

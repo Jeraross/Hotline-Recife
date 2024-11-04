@@ -1,38 +1,59 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <math.h>
+#include <time.h>
 #include "screen.h"
 #include "keyboard.h"
-#include "timer.h"
+#include <unistd.h>
 
-
-#define MAP_WIDTH 20
-#define MAP_HEIGHT 10
+#define MAP_WIDTH 40
+#define MAP_HEIGHT 20
+#define MAX_ENEMIES 5  // Número de inimigos
 
 // Cores para os elementos do mapa
 #define COLOR_WALL RED
 #define COLOR_DOOR YELLOW
 #define COLOR_FLOOR LIGHTGRAY
 #define COLOR_PLAYER GREEN
+#define COLOR_ENEMY MAGENTA
+#define COLOR_ATTACK CYAN  // Cor para o feedback de ataque
 
-// Definição do mapa
+// Definição do mapa ampliado
 char map[MAP_HEIGHT][MAP_WIDTH] = {
-    "####################",
-    "#    #     D      #",
-    "#    #            #",
-    "#    ####  #######",
-    "#         D       #",
-    "#    #######      #",
-    "#       D         #",
-    "###  ##############",
-    "#                 #",
-    "####################"
+    "########################################",
+    "#    #     D      #              D    #",
+    "#    #            #                   #",
+    "#    ####  ###############  ########  #",
+    "#         D            #              #",
+    "#    #######           #              #",
+    "#       D              #              #",
+    "###  #######################  #########",
+    "#                 #                   #",
+    "#      ########   #       D           #",
+    "###    #      #            #          #",
+    "#      #      ##########   #   ####   #",
+    "#   D          #           #      #   #",
+    "######         #           #      #   #",
+    "#              ####################### #",
+    "#                      D              #",
+    "#  ####   ####    ####   ####    #### #",
+    "#                 #      #             #",
+    "#                 #      #             #",
+    "########################################"
 };
 
 // Posição inicial do jogador
 int playerX = 1;
 int playerY = 1;
+
+// Estrutura para os inimigos
+typedef struct {
+    int x, y;
+    int alive;
+} Enemy;
+
+Enemy enemies[MAX_ENEMIES] = {
+    {5, 5, 1}, {8, 2, 1}, {15, 7, 1}, {30, 15, 1}, {35, 10, 1}
+};
 
 // Função para desenhar o mapa
 void screenDrawMap() {
@@ -50,71 +71,163 @@ void screenDrawMap() {
                     screenSetColor(COLOR_FLOOR, BLACK); break;
             }
 
-            // Posiciona o cursor e desenha a célula
             screenGotoxy(x, y);
             printf("%c", cell);
         }
     }
-    screenSetColor(WHITE, BLACK);  // Reset de cor
-    fflush(stdout); // Garante que a tela seja atualizada
+    screenSetColor(WHITE, BLACK);
+    fflush(stdout);
 }
 
 // Função para desenhar o jogador
 void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
     screenGotoxy(playerX, playerY);
-    printf("@");  // Caractere do jogador
-    fflush(stdout); // Atualiza a tela imediatamente
+    printf("@");
+    fflush(stdout);
+}
+
+// Função para desenhar os inimigos
+void drawEnemies() {
+    screenSetColor(COLOR_ENEMY, BLACK);
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].alive) {
+            screenGotoxy(enemies[i].x, enemies[i].y);
+            printf("E");
+        }
+    }
+    fflush(stdout);
 }
 
 // Função para mover o jogador
 void movePlayer(int dx, int dy) {
-    // Nova posição do jogador
     int newX = playerX + dx;
     int newY = playerY + dy;
 
-    // Checa se a nova posição é válida (não é parede)
     if (map[newY][newX] != '#') {
-        // Apaga a posição antiga
         screenGotoxy(playerX, playerY);
         printf(" ");
 
-        // Atualiza a posição do jogador
         playerX = newX;
         playerY = newY;
 
-        // Desenha o jogador na nova posição
         drawPlayer();
     }
 }
 
-int main() {
-    keyboardInit();     // Inicializa o teclado
-    screenInit(0);      // Inicializa a tela sem bordas
+// Função para verificar se uma posição está ocupada por outro inimigo
+int isOccupiedByEnemy(int x, int y) {
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].alive && enemies[i].x == x && enemies[i].y == y) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
-    screenDrawMap();    // Desenha o mapa na tela
-    drawPlayer();       // Desenha o jogador na posição inicial
+// Função para mover inimigos em direção ao jogador
+void moveEnemies() {
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (!enemies[i].alive) continue;
+
+        screenGotoxy(enemies[i].x, enemies[i].y);
+        printf(" ");
+
+        int newX = enemies[i].x;
+        int newY = enemies[i].y;
+
+        if (enemies[i].x < playerX && map[enemies[i].y][enemies[i].x + 1] != '#' && !isOccupiedByEnemy(enemies[i].x + 1, enemies[i].y)) {
+            newX++;
+        } else if (enemies[i].x > playerX && map[enemies[i].y][enemies[i].x - 1] != '#' && !isOccupiedByEnemy(enemies[i].x - 1, enemies[i].y)) {
+            newX--;
+        }
+
+        if (enemies[i].y < playerY && map[enemies[i].y + 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y + 1)) {
+            newY++;
+        } else if (enemies[i].y > playerY && map[enemies[i].y - 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y - 1)) {
+            newY--;
+        }
+
+        enemies[i].x = newX;
+        enemies[i].y = newY;
+    }
+    drawEnemies();
+}
+
+// Função para exibir feedback visual do ataque ao redor do jogador
+void showAttackFeedback() {
+    screenSetColor(COLOR_ATTACK, BLACK);
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            if (dx == 0 && dy == 0) continue;
+
+            int x = playerX + dx;
+            int y = playerY + dy;
+            if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT && map[y][x] != '#') {
+                screenGotoxy(x, y);
+                printf("*");  // Feedback visual do ataque
+            }
+        }
+    }
+    fflush(stdout);
+}
+
+// Função para ataque com feedback visual
+void playerAttack() {
+    showAttackFeedback();
+
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (!enemies[i].alive) continue;
+
+        if (abs(enemies[i].x - playerX) <= 1 && abs(enemies[i].y - playerY) <= 1) {
+            screenGotoxy(enemies[i].x, enemies[i].y);
+            printf(" ");
+            enemies[i].alive = 0;
+        }
+    }
+
+    screenGotoxy(playerX, playerY);
+    drawPlayer();
+
+    usleep(200000);  // Aguarda para mostrar o feedback visual
+    screenDrawMap();  // Redesenha o mapa para remover o feedback
+    drawPlayer();
+    drawEnemies();
+}
+
+int main() {
+    keyboardInit();
+    screenInit(0);
+
+    screenDrawMap();
+    drawPlayer();
+    drawEnemies();
+
+    time_t lastEnemyMove = time(NULL);
 
     while (1) {
         if (keyhit()) {
             char key = readch();
 
-            // Move o jogador com base na tecla pressionada
             switch (key) {
-                case 'w': movePlayer(0, -1); break;  // Cima
-                case 's': movePlayer(0, 1); break;   // Baixo
-                case 'a': movePlayer(-1, 0); break;  // Esquerda
-                case 'd': movePlayer(1, 0); break;   // Direita
-                case 'q':  // Tecla para sair do jogo
+                case 'w': movePlayer(0, -1); break;
+                case 's': movePlayer(0, 1); break;
+                case 'a': movePlayer(-1, 0); break;
+                case 'd': movePlayer(1, 0); break;
+                case ' ': playerAttack(); break;
+                case 'q':
                     keyboardDestroy();
                     screenDestroy();
                     return 0;
             }
         }
 
-        // Move o cursor para uma posição fixa para evitar "sobras" na tela
+        if (difftime(time(NULL), lastEnemyMove) >= 1) {
+            moveEnemies();
+            lastEnemyMove = time(NULL);
+        }
+
         screenGotoxy(0, MAP_HEIGHT);
-        fflush(stdout); // Atualiza o conteúdo da tela
+        fflush(stdout);
     }
 }
-
