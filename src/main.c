@@ -9,52 +9,64 @@
 #define MAP_WIDTH 45
 #define MAP_HEIGHT 21
 #define MAX_ENEMIES 5
-#define MAX_AMMO 10
+#define MAX_AMMO 5
 #define PLAYER_MAX_HEALTH 3
 #define ENEMY_RESPAWN_INTERVAL 2
 #define ENEMY_COOLDOWN_PERIOD 2  // Tempo que o inimigo fica parado ao colidir com o jogador
+#define MAX_CLIPS 3
+#define DROP_CHANCE 20
 
-#define COLOR_WALL RED
+#define COLOR_WALL YELLOW
 #define COLOR_FLOOR LIGHTGRAY
 #define COLOR_PLAYER GREEN
 #define COLOR_ENEMY MAGENTA
-#define COLOR_ENEMY_HIT YELLOW // Cor temporária quando o inimigo atinge o jogador
+#define COLOR_ENEMY_HIT WHITE // Cor temporária quando o inimigo atinge o jogador
 #define COLOR_ATTACK CYAN
+#define COLOR_DROP_AMMO BLUE
+#define COLOR_DROP_HEALTH RED
 
 char map[MAP_HEIGHT][MAP_WIDTH] = {
     "#############################################",
     "#############################################",
-    "##                                          #",
-    "##    #            #                        #",
-    "##    #            #                        #",
-    "##    ####  ################   #######      #",
-    "##                         #                #",
+    "##                             #            #",
+    "##    #            #           #            #",
+    "##    #            #           #            #",
+    "##    ####  ################   ########     #",
+    "##    #                    #                #",
     "##    #######              #                #",
-    "##                         #                #",
-    "##    ######################   ##############",
-    "##                 #                        #",
-    "##       ########  #                        #",
-    "##       #      #           #               #",
-    "##       #      #########   #   ####        #",
-    "##              #           #      #        #",
-    "#######         #           #      #        #",
     "##                                          #",
-    "##  ####   ####     ###   ####    ####      #",
+    "##      ####################   ##############",
+    "##                 #                        #",
+    "##      ########   #                        #",
+    "##      #                   #               #",
+    "##      #      #########    #   ####        #",
+    "##             #            #      #        #",
+    "##             #            #      #        #",
+    "##                                 #        #",
+    "#######    ####     ###    ###     ###      #",
     "##                  #        #              #",
     "##                  #        #              #",
     "#############################################"
 };
 
+typedef struct {
+    int x, y;
+    int active;
+    int type; // 1 para munição, 2 para vida
+} Drop;
+
+Drop drops[MAX_ENEMIES] = {{0}}; // Inicializa os drops como inativos
+
 // Definindo a estrutura Player
 typedef struct {
-    int x;
-    int y;
+    int x, y;
     int health;
     int hasWeapon;
     int ammo;
+    int clips;
 } Player;
 
-Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 0}; // Inicializando o jogador
+Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 5, 3}; // Inicializando o jogador
 
 typedef struct {
     int x, y;
@@ -65,12 +77,17 @@ typedef struct {
 Enemy enemies[MAX_ENEMIES] = { {5, 5, 1, 0}, {8, 2, 1, 0}, {15, 7, 1, 0}, {30, 15, 1, 0}, {35, 10, 1, 0} };
 
 time_t lastEnemySpawn;
+int score = 0, combo = 1;
+time_t lastKillTime;
 
 void screenDrawMap();
 void drawHUD();
 void drawPlayer();
-void drawEnemies();
 void drawWeapon();
+void drawEnemies();
+void drawDrops();
+void spawnDrop(int x, int y);
+void updateScore(int points, int isEnemyKill);
 int isOccupiedByEnemy(int x, int y);
 void movePlayer(int dx, int dy);
 void moveEnemies();
@@ -80,7 +97,6 @@ void playerAttack();
 void playerShoot(int dx, int dy);
 void reload();
 
-
 int main() {
     keyboardInit();
     screenInit(0);
@@ -89,8 +105,9 @@ int main() {
     screenDrawMap();
     drawPlayer();
     drawEnemies();
-    drawWeapon();
     drawHUD();
+    drawWeapon();
+    drawDrops();
 
     time_t lastEnemyMove = time(NULL);
     lastEnemySpawn = time(NULL);
@@ -124,8 +141,11 @@ int main() {
 
         spawnEnemies();
         drawHUD();
+        drawWeapon();
+        drawDrops();
     }
 }
+
 void screenDrawMap() {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
@@ -151,7 +171,8 @@ void screenDrawMap() {
 void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
     screenSetColor(WHITE, BLACK);
-    printf("Vida: %d  Munição: %d\n", player.health, player.ammo);
+    printf("Vida: %d  Munição: %d/%d Pontos: %d  Combo: x%d \n",
+           player.health, player.ammo, player.clips, score, combo);
     fflush(stdout);
 }
 
@@ -181,11 +202,56 @@ void drawEnemies() {
 
 void drawWeapon() {
     if (!player.hasWeapon) {
-        screenSetColor(YELLOW, BLACK);
+        screenSetColor(WHITE, BLACK);
         screenGotoxy(20, 10);
         printf("W");
         fflush(stdout);
     }
+}
+
+void drawDrops() {
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (drops[i].active) {
+            screenGotoxy(drops[i].x, drops[i].y);
+            if (drops[i].type == 1) {
+                screenSetColor(COLOR_DROP_AMMO, BLACK);
+                printf("A"); // Drop de munição
+            } else if (drops[i].type == 2) {
+                screenSetColor(COLOR_DROP_HEALTH, BLACK);
+                printf("H"); // Drop de vida
+            }
+            fflush(stdout);
+        }
+    }
+}
+
+void spawnDrop(int x, int y) {
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (!drops[i].active) {
+            drops[i].x = x;
+            drops[i].y = y;
+            drops[i].active = 1;
+            drops[i].type = (rand() % 2) + 1; // 1 para munição, 2 para vida
+            drawDrops();
+            break;
+        }
+    }
+}
+
+void updateScore(int points, int isEnemyKill) {
+    time_t currentTime = time(NULL);
+    if (isEnemyKill) {
+        if (difftime(currentTime, lastKillTime) < 3) {
+            combo++;
+        } else {
+            combo = 1;
+        }
+        score += points * combo;
+        lastKillTime = currentTime;
+    } else {
+        score += points;
+    }
+    drawHUD();
 }
 
 int isOccupiedByEnemy(int x, int y) {
@@ -215,8 +281,21 @@ void movePlayer(int dx, int dy) {
             printf(" ");
         }
 
-        drawPlayer();
+        for (int i = 0; i < MAX_ENEMIES; i++) {
+            if (drops[i].active && drops[i].x == player.x && drops[i].y == player.y) {
+                if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
+                    player.clips++;
+                } else if (drops[i].type == 2 && player.health < PLAYER_MAX_HEALTH) {
+                    player.health++;
+                }
+                drops[i].active = 0;
+                screenGotoxy(drops[i].x, drops[i].y);
+                printf(" ");
+            }
+        }
     }
+
+    drawPlayer();
 }
 
 void moveEnemies() {
@@ -267,7 +346,6 @@ void moveEnemies() {
     drawEnemies();
 }
 
-
 void spawnEnemies() {
     if (difftime(time(NULL), lastEnemySpawn) < ENEMY_RESPAWN_INTERVAL) return;
 
@@ -315,7 +393,11 @@ void playerAttack() {
             screenGotoxy(enemies[i].x, enemies[i].y);
             printf(" ");
             enemies[i].alive = 0;
-
+            int dropChance = rand() % 100; // Gera um número aleatório de 0 a 99
+            if (dropChance < DROP_CHANCE) { // Se o número gerado for menor que a chance de drop
+                spawnDrop(enemies[i].x, enemies[i].y);  // Gera o drop na posição do inimigo derrotado
+            }
+            updateScore(100, 1);
         }
     }
     screenGotoxy(player.x, player.y);
@@ -326,6 +408,7 @@ void playerAttack() {
     drawPlayer();
     drawEnemies();
     drawWeapon();
+    drawDrops();
 }
 
 void playerShoot(int dx, int dy) {
@@ -333,7 +416,8 @@ void playerShoot(int dx, int dy) {
 
     int x = player.x + dx;
     int y = player.y + dy;
-    int range = 5;
+    int range;
+    if (dy == 0) range = 10; else range = 5;
     player.ammo--;
 
     char shotChar = (dx == 0) ? '|' : '-';
@@ -355,6 +439,11 @@ void playerShoot(int dx, int dy) {
                 enemies[i].alive = 0;
                 screenGotoxy(x, y);
                 printf(" ");
+                int dropChance = rand() % 100; // Gera um número aleatório de 0 a 99
+                if (dropChance < DROP_CHANCE) { // Se o número gerado for menor que a chance de drop
+                    spawnDrop(enemies[i].x, enemies[i].y);  // Gera o drop na posição do inimigo derrotado
+                }
+                updateScore(100, 1);
                 return;
             }
         }
@@ -370,9 +459,13 @@ void playerShoot(int dx, int dy) {
     screenDrawMap();
     drawPlayer();
     drawEnemies();
+    drawDrops();
 }
 
 void reload() {
-    player.ammo = MAX_AMMO;
-    drawHUD();
+    if (player.clips > 0 && player.ammo < MAX_AMMO) {
+        player.ammo = MAX_AMMO;
+        player.clips--;
+        drawHUD();
+    }
 }
