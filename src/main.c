@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #define MAP_WIDTH 40
-#define MAP_HEIGHT 20
+#define MAP_HEIGHT 22
 #define MAX_ENEMIES 5  // Número de inimigos
 
 // Cores para os elementos do mapa
@@ -20,10 +20,114 @@
 // Definição do mapa ampliado
 char **map;
 
+struct Player {
+    int x, y;
+    int hasWeapon;
+    int alive;
+    int lives;
+};
+
+
+struct Player player;
+
+int weaponX = 20;
+int weaponY = 10;
+int hasWeapon = 0;
+
+typedef struct {
+    int x, y;
+    int alive;
+} Enemy;
+
+Enemy enemies[MAX_ENEMIES] = {
+    {5, 5, 1}, {8, 2, 1}, {15, 7, 1}, {30, 15, 1}, {35, 10, 1}
+};
+
+void freeMap();
+void initMap();
+void screenDrawMap();
+void drawPlayer();
+void drawEnemies();
+void drawWeapon();
+void drawLives(struct Player *player);
+void movePlayer(int dx, int dy);
+void takeDamage(struct Player *player);
+int isOccupiedByEnemy(int x, int y);
+void moveEnemies();
+void showAttackFeedback();
+void playerAttack();
+void playerShoot(int dx, int dy);
+
+
+int main() {
+    keyboardInit();
+    screenInit(0);
+
+    initMap();
+
+    screenDrawMap();
+    player.x = 1;
+    player.y = 1;
+    player.lives = 3;
+    drawPlayer();
+    drawEnemies();
+    drawWeapon();
+    drawLives(&player);
+
+    time_t lastEnemyMove = time(NULL);
+
+    while (1) {
+        if (keyhit()) {
+            char key = readch();
+
+            switch (key) {
+                case 'w': movePlayer(0, -1); break;
+                case 's': movePlayer(0, 1); break;
+                case 'a': movePlayer(-1, 0); break;
+                case 'd': movePlayer(1, 0); break;
+                case ' ': playerAttack(); break;
+                case 'i': playerShoot(0, -1); break;  // Tiro para cima
+                case 'k': playerShoot(0, 1); break;   // Tiro para baixo
+                case 'j': playerShoot(-1, 0); break;  // Tiro para a esquerda
+                case 'l': playerShoot(1, 0); break;   // Tiro para a direita
+                case 'q':
+                    freeMap();  // Libera a memória do mapa antes de sair
+                    keyboardDestroy();
+                    screenDestroy();
+                    return 0;
+            }
+        }
+
+        // Movimento dos inimigos e atualização da tela
+        if (difftime(time(NULL), lastEnemyMove) >= 1) {
+            moveEnemies();
+            lastEnemyMove = time(NULL);
+        }
+
+        screenGotoxy(0, MAP_HEIGHT);
+        fflush(stdout);
+    }
+
+    // Libera a memória do mapa, se o loop terminar
+    freeMap();
+
+    return 0;  // Adicionando retorno 0 para sinalizar que o programa terminou corretamente
+}
+
 void initMap() {
     map = (char**) malloc(MAP_HEIGHT * sizeof(char*));
+    if (map == NULL) {
+        perror("Failed to allocate memory for the map");
+        exit(EXIT_FAILURE);
+    }
+
     for (int i = 0; i < MAP_HEIGHT; i++) {
         map[i] = (char*) malloc(MAP_WIDTH * sizeof(char));
+        if (map[i] == NULL) {
+            perror("Failed to allocate memory for a row of the map");
+            freeMap(); // Libera a memória já alocada
+            exit(EXIT_FAILURE);
+        }
     }
 
     const char *mapData[MAP_HEIGHT] = {
@@ -46,8 +150,11 @@ void initMap() {
         "#  ####   ####    ####   ####    #### #",
         "#                 #      #             #",
         "#                 #      #             #",
-        "########################################"
+        "########################################",
+        "                                        ",
+        "                                        "
     };
+
     for (int i = 0; i < MAP_HEIGHT; i++) {
         for (int j = 0; j < MAP_WIDTH; j++) {
             map[i][j] = mapData[i][j];
@@ -62,27 +169,6 @@ void freeMap() {
     free(map);
 }
 
-struct Player {
-    int x, y;
-    int hasWeapon;
-    int alive;
-};
-
-
-struct Player player;
-
-int weaponX = 20;
-int weaponY = 10;
-int hasWeapon = 0;
-
-typedef struct {
-    int x, y;
-    int alive;
-} Enemy;
-
-Enemy enemies[MAX_ENEMIES] = {
-    {5, 5, 1}, {8, 2, 1}, {15, 7, 1}, {30, 15, 1}, {35, 10, 1}
-};
 
 // Função para desenhar o mapa
 void screenDrawMap() {
@@ -143,6 +229,11 @@ void drawWeapon() {
     }
 }
 
+void drawLives(struct Player *player) {
+    screenGotoxy(0, 21);  // Escolha uma linha fixa
+    printf("Vidas: %d", player->lives);
+}
+
 
 // Função para mover o jogador
 void movePlayer(int dx, int dy) {
@@ -167,7 +258,22 @@ void movePlayer(int dx, int dy) {
     }
 }
 
-
+void takeDamage(struct Player *player) {
+    if (player->lives > 0){
+        player->lives--;
+        if (player->lives == 0) {
+            player->alive = 0;
+            screenGotoxy(0, 22);
+            printf("Game Over");
+            fflush(stdout);
+            return;
+            } else {
+               screenGotoxy(0, 22);
+               printf("Você perdeu uma vida! Vidas restantes: %d", player->lives);
+               fflush(stdout);
+            }
+        }
+    }
 
 
 // Função para verificar se uma posição está ocupada por outro inimigo
@@ -191,23 +297,41 @@ void moveEnemies() {
         int newX = enemies[i].x;
         int newY = enemies[i].y;
 
-        if (enemies[i].x < player.x && map[enemies[i].y][enemies[i].x + 1] != '#' && !isOccupiedByEnemy(enemies[i].x + 1, enemies[i].y)) {
-            newX++;
-        } else if (enemies[i].x > player.x && map[enemies[i].y][enemies[i].x - 1] != '#' && !isOccupiedByEnemy(enemies[i].x - 1, enemies[i].y)) {
-            newX--;
+        if (enemies[i].x < player.x) {
+            if (map[enemies[i].y][enemies[i].x + 1] != '#' && !isOccupiedByEnemy(enemies[i].x + 1, enemies[i].y)) {
+                newX++;
+            }
+        } else if (enemies[i].x > player.x) {
+            if (map[enemies[i].y][enemies[i].x - 1] != '#' && !isOccupiedByEnemy(enemies[i].x - 1, enemies[i].y)) {
+                newX--;
+            }
         }
 
-        if (enemies[i].y < player.y && map[enemies[i].y + 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y + 1)) {
-            newY++;
-        } else if (enemies[i].y > player.y && map[enemies[i].y - 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y - 1)) {
-            newY--;
+        if (newX == enemies[i].x) { // Adicionado '{' para iniciar o bloco
+            if (enemies[i].y < player.y) {
+                if (map[enemies[i].y + 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y + 1)) {
+                    newY++;
+                }
+            } else if (enemies[i].y > player.y) {
+                // Corrigido para adicionar '{' e '}' ao redor do código da condição
+                if (map[enemies[i].y - 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y - 1)) {
+                    newY--;
+                }
+            }
         }
 
         enemies[i].x = newX;
         enemies[i].y = newY;
+
+        if (enemies[i].alive && enemies[i].y == player.y && enemies[i].x == player.x) {
+            takeDamage(&player);
+        }
+
     }
     drawEnemies();
 }
+
+
 
 // Função para exibir feedback visual do ataque ao redor do jogador
 void showAttackFeedback() {
@@ -299,52 +423,3 @@ void playerShoot(int dx, int dy) {
 }
 
 
-
-int main() {
-    keyboardInit();
-    screenInit(0);
-
-    initMap();
-
-    screenDrawMap();
-    player.x = 1;
-    player.y = 1;
-    drawPlayer();
-    drawEnemies();
-    drawWeapon();
-
-    time_t lastEnemyMove = time(NULL);
-
-    while (1) {
-        if (keyhit()) {
-            char key = readch();
-
-            switch (key) {
-                case 'w': movePlayer(0, -1); break;
-                case 's': movePlayer(0, 1); break;
-                case 'a': movePlayer(-1, 0); break;
-                case 'd': movePlayer(1, 0); break;
-                case ' ': playerAttack(); break;
-                case 'i': playerShoot(0, -1); break;  // Tiro para cima
-                case 'k': playerShoot(0, 1); break;   // Tiro para baixo
-                case 'j': playerShoot(-1, 0); break;  // Tiro para a esquerda
-                case 'l': playerShoot(1, 0); break;   // Tiro para a direita
-                case 'q':
-                    keyboardDestroy();
-                screenDestroy();
-                return 0;
-            }
-        }
-
-        // Movimento dos inimigos e atualização da tela
-        if (difftime(time(NULL), lastEnemyMove) >= 1) {
-            moveEnemies();
-            lastEnemyMove = time(NULL);
-        }
-
-        screenGotoxy(0, MAP_HEIGHT);
-        fflush(stdout);
-    }
-
-    free(map);
-}
