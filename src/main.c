@@ -69,26 +69,36 @@ void screenDrawMap() {
             // Escolhe a cor para cada tipo de célula
             switch(cell) {
                 case '#':
-                    screenSetColor(COLOR_WALL, BLACK); break;
+                    screenSetColor(COLOR_WALL, BLACK);
+                // Exibe o caractere ▣ ao invés de #
+                screenGotoxy(x, y);
+                printf("▣");
+                break;
                 case 'D':
-                    screenSetColor(COLOR_DOOR, BLACK); break;
+                    screenSetColor(COLOR_DOOR, BLACK);
+                // Exibe o caractere D
+                screenGotoxy(x, y);
+                printf("D");
+                break;
                 default:
-                    screenSetColor(COLOR_FLOOR, BLACK); break;
+                    screenSetColor(COLOR_FLOOR, BLACK);
+                // Exibe um espaço em branco
+                screenGotoxy(x, y);
+                printf(" ");
+                break;
             }
-
-            screenGotoxy(x, y);
-            printf("%c", cell);
         }
     }
     screenSetColor(WHITE, BLACK);
     fflush(stdout);
 }
 
+
 // Função para desenhar o jogador
 void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
     screenGotoxy(playerX, playerY);
-    printf("@");
+    printf("★");
     fflush(stdout);
 }
 
@@ -98,7 +108,7 @@ void drawEnemies() {
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (enemies[i].alive) {
             screenGotoxy(enemies[i].x, enemies[i].y);
-            printf("E");
+            printf("👾");
         }
     }
     fflush(stdout);
@@ -108,7 +118,7 @@ void drawWeapon() {
     if (!hasWeapon) {
         screenSetColor(YELLOW, BLACK);
         screenGotoxy(weaponX, weaponY);
-        printf("W");  // W representa a arma
+        printf("🔫");  // W representa a arma
         fflush(stdout);
     }
 }
