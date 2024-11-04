@@ -45,6 +45,11 @@ char map[MAP_HEIGHT][MAP_WIDTH] = {
 int playerX = 1;
 int playerY = 1;
 
+//posicao da arma
+int weaponX = 20;
+int weaponY = 10;
+int hasWeapon = 0;
+
 // Estrutura para os inimigos
 typedef struct {
     int x, y;
@@ -99,6 +104,16 @@ void drawEnemies() {
     fflush(stdout);
 }
 
+void drawWeapon() {
+    if (!hasWeapon) {
+        screenSetColor(YELLOW, BLACK);
+        screenGotoxy(weaponX, weaponY);
+        printf("W");  // W representa a arma
+        fflush(stdout);
+    }
+}
+
+
 // Função para mover o jogador
 void movePlayer(int dx, int dy) {
     int newX = playerX + dx;
@@ -111,9 +126,19 @@ void movePlayer(int dx, int dy) {
         playerX = newX;
         playerY = newY;
 
+        // Verifica se o jogador pegou a arma
+        if (playerX == weaponX && playerY == weaponY) {
+            hasWeapon = 1;
+            screenGotoxy(weaponX, weaponY);
+            printf(" ");  // Remove a arma do mapa
+        }
+
         drawPlayer();
     }
 }
+
+
+
 
 // Função para verificar se uma posição está ocupada por outro inimigo
 int isOccupiedByEnemy(int x, int y) {
@@ -193,7 +218,57 @@ void playerAttack() {
     screenDrawMap();  // Redesenha o mapa para remover o feedback
     drawPlayer();
     drawEnemies();
+    drawWeapon();
 }
+
+void playerShoot(int dx, int dy) {
+    if (!hasWeapon) return;  // Só pode atirar se tiver a arma
+
+    int x = playerX + dx;
+    int y = playerY + dy;
+    int range = 5;  // Alcance máximo do tiro
+
+    // Define o caractere do tiro com base na direção
+    char shotChar = (dx == 0) ? '|' : '-';  // '|' para tiro vertical, '-' para horizontal
+
+    screenSetColor(CYAN, BLACK);  // Cor do tiro
+
+    for (int step = 0; step < range; step++) {
+        if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT || map[y][x] == '#') {
+            break;  // Sai do loop se o tiro atingir um obstáculo ou o limite do mapa
+        }
+
+        screenGotoxy(x, y);
+        printf("%c", shotChar);  // Exibe o tiro
+        fflush(stdout);
+        usleep(50000);  // Pausa para a animação do tiro
+
+        // Verifica se atingiu algum inimigo
+        for (int i = 0; i < MAX_ENEMIES; i++) {
+            if (enemies[i].alive && enemies[i].x == x && enemies[i].y == y) {
+                enemies[i].alive = 0;
+                screenGotoxy(x, y);
+                printf(" ");  // Remove o inimigo atingido
+                return;  // Termina o disparo após atingir um inimigo
+            }
+        }
+
+        // Apaga o caractere de tiro da célula anterior
+        screenGotoxy(x, y);
+        printf(" ");
+        fflush(stdout);
+
+        // Move o tiro para a próxima posição
+        x += dx;
+        y += dy;
+    }
+
+    screenDrawMap();  // Redesenha o mapa para remover o último tiro
+    drawPlayer();
+    drawEnemies();
+}
+
+
 
 int main() {
     keyboardInit();
@@ -202,6 +277,7 @@ int main() {
     screenDrawMap();
     drawPlayer();
     drawEnemies();
+    drawWeapon();
 
     time_t lastEnemyMove = time(NULL);
 
@@ -215,13 +291,18 @@ int main() {
                 case 'a': movePlayer(-1, 0); break;
                 case 'd': movePlayer(1, 0); break;
                 case ' ': playerAttack(); break;
+                case 'i': playerShoot(0, -1); break;  // Tiro para cima
+                case 'k': playerShoot(0, 1); break;   // Tiro para baixo
+                case 'j': playerShoot(-1, 0); break;  // Tiro para a esquerda
+                case 'l': playerShoot(1, 0); break;   // Tiro para a direita
                 case 'q':
                     keyboardDestroy();
-                    screenDestroy();
-                    return 0;
+                screenDestroy();
+                return 0;
             }
         }
 
+        // Movimento dos inimigos e atualização da tela
         if (difftime(time(NULL), lastEnemyMove) >= 1) {
             moveEnemies();
             lastEnemyMove = time(NULL);
