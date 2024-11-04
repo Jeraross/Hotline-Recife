@@ -55,7 +55,6 @@ void initMap() {
     }
 }
 
-// Função para liberar o mapa da memória
 void freeMap() {
     for (int i = 0; i < MAP_HEIGHT; i++) {
         free(map[i]);
@@ -63,16 +62,19 @@ void freeMap() {
     free(map);
 }
 
-// Posição inicial do jogador
-int playerX = 1;
-int playerY = 1;
+struct Player {
+    int x, y;
+    int hasWeapon;
+    int alive;
+};
 
-//posicao da arma
+
+struct Player player;
+
 int weaponX = 20;
 int weaponY = 10;
 int hasWeapon = 0;
 
-// Estrutura para os inimigos
 typedef struct {
     int x, y;
     int alive;
@@ -115,7 +117,7 @@ void screenDrawMap() {
 
 void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
-    screenGotoxy(playerX, playerY);
+    screenGotoxy(player.x, player.y);
     printf("★");
     fflush(stdout);
 }
@@ -144,18 +146,18 @@ void drawWeapon() {
 
 // Função para mover o jogador
 void movePlayer(int dx, int dy) {
-    int newX = playerX + dx;
-    int newY = playerY + dy;
+    int newX = player.x + dx;
+    int newY = player.y + dy;
 
     if (map[newY][newX] != '#') {
-        screenGotoxy(playerX, playerY);
+        screenGotoxy(player.x, player.y);
         printf(" ");
 
-        playerX = newX;
-        playerY = newY;
+        player.x = newX;
+        player.y = newY;
 
         // Verifica se o jogador pegou a arma
-        if (playerX == weaponX && playerY == weaponY) {
+        if (player.x == weaponX && player.y == weaponY) {
             hasWeapon = 1;
             screenGotoxy(weaponX, weaponY);
             printf(" ");  // Remove a arma do mapa
@@ -189,15 +191,15 @@ void moveEnemies() {
         int newX = enemies[i].x;
         int newY = enemies[i].y;
 
-        if (enemies[i].x < playerX && map[enemies[i].y][enemies[i].x + 1] != '#' && !isOccupiedByEnemy(enemies[i].x + 1, enemies[i].y)) {
+        if (enemies[i].x < player.x && map[enemies[i].y][enemies[i].x + 1] != '#' && !isOccupiedByEnemy(enemies[i].x + 1, enemies[i].y)) {
             newX++;
-        } else if (enemies[i].x > playerX && map[enemies[i].y][enemies[i].x - 1] != '#' && !isOccupiedByEnemy(enemies[i].x - 1, enemies[i].y)) {
+        } else if (enemies[i].x > player.x && map[enemies[i].y][enemies[i].x - 1] != '#' && !isOccupiedByEnemy(enemies[i].x - 1, enemies[i].y)) {
             newX--;
         }
 
-        if (enemies[i].y < playerY && map[enemies[i].y + 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y + 1)) {
+        if (enemies[i].y < player.y && map[enemies[i].y + 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y + 1)) {
             newY++;
-        } else if (enemies[i].y > playerY && map[enemies[i].y - 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y - 1)) {
+        } else if (enemies[i].y > player.y && map[enemies[i].y - 1][enemies[i].x] != '#' && !isOccupiedByEnemy(enemies[i].x, enemies[i].y - 1)) {
             newY--;
         }
 
@@ -214,8 +216,8 @@ void showAttackFeedback() {
         for (int dx = -1; dx <= 1; dx++) {
             if (dx == 0 && dy == 0) continue;
 
-            int x = playerX + dx;
-            int y = playerY + dy;
+            int x = player.x + dx;
+            int y = player.y + dy;
             if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT && map[y][x] != '#') {
                 screenGotoxy(x, y);
                 printf("*");  // Feedback visual do ataque
@@ -232,14 +234,14 @@ void playerAttack() {
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) continue;
 
-        if (abs(enemies[i].x - playerX) <= 1 && abs(enemies[i].y - playerY) <= 1) {
+        if (abs(enemies[i].x - player.x) <= 1 && abs(enemies[i].y - player.y) <= 1) {
             screenGotoxy(enemies[i].x, enemies[i].y);
             printf(" ");
             enemies[i].alive = 0;
         }
     }
 
-    screenGotoxy(playerX, playerY);
+    screenGotoxy(player.x, player.y);
     drawPlayer();
 
     usleep(200000);  // Aguarda para mostrar o feedback visual
@@ -252,8 +254,8 @@ void playerAttack() {
 void playerShoot(int dx, int dy) {
     if (!hasWeapon) return;  // Só pode atirar se tiver a arma
 
-    int x = playerX + dx;
-    int y = playerY + dy;
+    int x = player.x + dx;
+    int y = player.y + dy;
     int range = 5;  // Alcance máximo do tiro
 
     // Define o caractere do tiro com base na direção
@@ -305,6 +307,8 @@ int main() {
     initMap();
 
     screenDrawMap();
+    player.x = 1;
+    player.y = 1;
     drawPlayer();
     drawEnemies();
     drawWeapon();
