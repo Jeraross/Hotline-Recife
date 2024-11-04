@@ -18,28 +18,50 @@
 #define COLOR_ATTACK CYAN  // Cor para o feedback de ataque
 
 // Definição do mapa ampliado
-char map[MAP_HEIGHT][MAP_WIDTH] = {
-    "########################################",
-    "#    #     D      #              D    #",
-    "#    #            #                   #",
-    "#    ####  ###############  ########  #",
-    "#         D            #              #",
-    "#    #######           #              #",
-    "#       D              #              #",
-    "###  #######################  #########",
-    "#                 #                   #",
-    "#      ########   #       D           #",
-    "###    #      #            #          #",
-    "#      #      ##########   #   ####   #",
-    "#   D          #           #      #   #",
-    "######         #           #      #   #",
-    "#              ####################### #",
-    "#                      D              #",
-    "#  ####   ####    ####   ####    #### #",
-    "#                 #      #             #",
-    "#                 #      #             #",
-    "########################################"
-};
+char **map;
+
+void initMap() {
+    map = (char**) malloc(MAP_HEIGHT * sizeof(char*));
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        map[i] = (char*) malloc(MAP_WIDTH * sizeof(char));
+    }
+
+    const char *mapData[MAP_HEIGHT] = {
+        "########################################",
+        "#    #     D      #              D    #",
+        "#    #            #                   #",
+        "#    ####  ###############  ########  #",
+        "#         D            #              #",
+        "#    #######           #              #",
+        "#       D              #              #",
+        "###  #######################  #########",
+        "#                 #                   #",
+        "#      ########   #       D           #",
+        "###    #      #            #          #",
+        "#      #      ##########   #   ####   #",
+        "#   D          #           #      #   #",
+        "######         #           #      #   #",
+        "#              ####################### #",
+        "#                      D              #",
+        "#  ####   ####    ####   ####    #### #",
+        "#                 #      #             #",
+        "#                 #      #             #",
+        "########################################"
+    };
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        for (int j = 0; j < MAP_WIDTH; j++) {
+            map[i][j] = mapData[i][j];
+        }
+    }
+}
+
+// Função para liberar o mapa da memória
+void freeMap() {
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        free(map[i]);
+    }
+    free(map);
+}
 
 // Posição inicial do jogador
 int playerX = 1;
@@ -70,19 +92,16 @@ void screenDrawMap() {
             switch(cell) {
                 case '#':
                     screenSetColor(COLOR_WALL, BLACK);
-                // Exibe o caractere ▣ ao invés de #
                 screenGotoxy(x, y);
                 printf("▣");
                 break;
                 case 'D':
                     screenSetColor(COLOR_DOOR, BLACK);
-                // Exibe o caractere D
                 screenGotoxy(x, y);
                 printf("D");
                 break;
                 default:
                     screenSetColor(COLOR_FLOOR, BLACK);
-                // Exibe um espaço em branco
                 screenGotoxy(x, y);
                 printf(" ");
                 break;
@@ -94,7 +113,6 @@ void screenDrawMap() {
 }
 
 
-// Função para desenhar o jogador
 void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
     screenGotoxy(playerX, playerY);
@@ -284,6 +302,8 @@ int main() {
     keyboardInit();
     screenInit(0);
 
+    initMap();
+
     screenDrawMap();
     drawPlayer();
     drawEnemies();
@@ -321,4 +341,6 @@ int main() {
         screenGotoxy(0, MAP_HEIGHT);
         fflush(stdout);
     }
+
+    free(map);
 }
