@@ -126,7 +126,7 @@ void drawWeapon();
 void drawEnemies();
 void drawDrops();
 void drawDoor();
-void doorVerify();
+int doorVerify();
 void spawnDrop(int x, int y);
 void updateScore(int points, int isEnemyKill);
 int isOccupiedByEnemy(int x, int y);
@@ -194,7 +194,17 @@ int main() {
             combo = 1;  // Reseta o combo se o tempo acabou
         }
         drawDoor();
-        doorVerify();
+        if (doorVerify()){
+            player.x = 2;
+            player.y = 2;
+            screenClear();
+            screenDrawMap(mapIndex);
+            drawPlayer();
+            drawEnemies();
+            drawHUD();
+            drawWeapon();
+            drawDrops();
+        }
     }
 }
 
@@ -306,12 +316,23 @@ void drawDoor() {
     fflush(stdout);
 }
 
-void doorVerify() {
+int doorVerify() {
     if (enemies_dead >= 10 && player.x == porta_x && player.y == porta_y) {
-        keyboardDestroy();
-        screenClear();
-        printf("Parabéns! Você completou o jogo!\n");
-        exit(0); // Termina o jogo
+        mapIndex++;
+        enemies_dead = 0;
+        player.x = 1;
+        player.y = 1;
+        if (mapIndex >= NUM_MAPS) {
+            screenGotoxy(0, MAP_HEIGHT + 1);
+            printf("Fim de jogo!");
+            exit(0);
+        }
+        else{
+            return 1;
+        }
+    }
+    else{
+        return 0;
     }
 }
 
