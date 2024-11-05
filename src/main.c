@@ -74,9 +74,9 @@ char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
         "##         #                               #          #",
         "##         #                               #          #",
         "##         ########                 ########          #",
-        "##                        # #                         #",
-        "##                       ## ##                        #",
-        "##                      ###D###                       #", 
+        "##                        #  #                        #",
+        "##                       ##  ##                       #",
+        "##                      ###  ###                      #", 
         "#######################################################"
     }
 };
@@ -122,7 +122,7 @@ void screenDrawMap(int mapIndex);
 void drawHUD();
 void drawComboHUD();
 void drawPlayer();
-void drawWeapon();
+void drawGun();
 void drawEnemies();
 void drawDrops();
 void drawDoor();
@@ -148,7 +148,7 @@ int main() {
     drawPlayer();
     drawEnemies();
     drawHUD();
-    drawWeapon();
+    drawGun();
     drawDrops();
 
     time_t lastEnemyMove = time(NULL);
@@ -186,7 +186,7 @@ int main() {
 
         spawnEnemies();
         drawHUD();
-        drawWeapon();
+        drawGun();
         drawDrops();
         drawComboHUD();  // Atualiza o HUD do combo com cor e tempo
         // Verificar se o tempo do combo acabou
@@ -197,12 +197,15 @@ int main() {
         if (doorVerify()){
             player.x = 2;
             player.y = 2;
+            porta_x = 27;
+            porta_y = 19;
+            player.hasWeapon = 0;
             screenClear();
             screenDrawMap(mapIndex);
             drawPlayer();
             drawEnemies();
             drawHUD();
-            drawWeapon();
+            drawGun();
             drawDrops();
         }
     }
@@ -283,13 +286,21 @@ void drawEnemies() {
     fflush(stdout);
 }
 
-void drawWeapon() {
-    if (!player.hasWeapon) {
+void drawGun() {
+    if (!player.hasWeapon && mapIndex == 0) {
         screenSetColor(WHITE, BLACK);
         screenGotoxy(53, 3);
-        printf("W");
+        printf("G");
         fflush(stdout);
     }
+
+    if (!player.hasWeapon && mapIndex == 1) {
+        screenSetColor(WHITE, BLACK);
+        screenGotoxy(28, 10);
+        printf("G");
+        fflush(stdout);
+    }
+
 }
 
 void drawDrops() {
@@ -323,6 +334,8 @@ int doorVerify() {
         player.x = 1;
         player.y = 1;
         if (mapIndex >= NUM_MAPS) {
+            screenClear();
+            keyboardDestroy();
             screenGotoxy(0, MAP_HEIGHT + 1);
             printf("Fim de jogo!");
             exit(0);
@@ -385,7 +398,14 @@ void movePlayer(int dx, int dy) {
         player.x = newX;
         player.y = newY;
 
-        if (player.x == 53 && player.y == 3) { // Verificando a coleta da arma
+        if (mapIndex==0 &&player.x == 53 && player.y == 3) { // Verificando a coleta da arma
+            player.hasWeapon = 1;
+            player.ammo = MAX_AMMO;
+            screenGotoxy(32, 4);
+            printf(" ");
+        }
+
+        if (mapIndex==1 &&player.x == 28 && player.y == 10) { // Verificando a coleta da arma
             player.hasWeapon = 1;
             player.ammo = MAX_AMMO;
             screenGotoxy(32, 4);
@@ -529,7 +549,7 @@ void playerAttack() {
     screenDrawMap(mapIndex);
     drawPlayer();
     drawEnemies();
-    drawWeapon();
+    drawGun();
     drawDrops();
 }
 
