@@ -36,17 +36,17 @@ char map[MAP_HEIGHT][MAP_WIDTH] = {
     "##    #                    #                          #",
     "##    #######              #                          #",
     "##                                                    #",
-    "##      ###############################################",
-    "##                 #                                 ##",
-    "##      ########   #                        ######   ##",
-    "##      #                   #               ##       ##",
-    "##      #      #########    #   ####        ##   ######",
-    "##             #            #      #        ##   ######",
-    "##             #            #      #        ##       ##",
-    "##                                 #        #######  ##",
-    "#######    ####     ###    ###     ###      ##       ##",
-    "##                  #        #              ##  #######",
-    "##                  #        #              ##         ",
+    "##      ########   ###################            #####",
+    "##                 #                              #   #",
+    "##      ########   #                              #  ##",
+    "##      #                   #                ######  ##",
+    "##      #      #########    #   ####         #       ##",
+    "##             #            #      #         #   ######",
+    "##             #            #      #         #       ##",
+    "##                                 #         ######  ##",
+    "#######    ####     ###    ###     ###       #       ##",
+    "##                  #        #               #  #######",
+    "##                  #        #                  #######",
     "#######################################################"
 };
 
@@ -116,8 +116,8 @@ int main() {
 
     time_t lastEnemyMove = time(NULL);
     lastEnemySpawn = time(NULL);
-    porta_x = MAP_WIDTH - 1;
-    porta_y = MAP_HEIGHT - 2;
+    porta_x = MAP_WIDTH - 2;
+    porta_y = 10;
     enemies_dead = 0;
 
     while (1) {
@@ -165,7 +165,7 @@ void screenDrawMap() {
             switch(cell) {
                 case '#':
                     screenSetColor(COLOR_WALL, BLACK);
-                    printf("#");
+                    printf("▓");
                     break;
                 default:
                     screenSetColor(COLOR_FLOOR, BLACK);
@@ -239,7 +239,7 @@ void drawDoor() {
     if (enemies_dead < 10) return;
     screenGotoxy(porta_x, porta_y);
     screenSetColor(COLOR_DOOR, BLACK);
-    printf("D");
+    printf("🚪");
     fflush(stdout);
 }
 
