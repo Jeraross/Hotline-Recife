@@ -15,7 +15,7 @@
 #define ENEMY_COOLDOWN_PERIOD 2  // Tempo que o inimigo fica parado ao colidir com o jogador
 #define MAX_CLIPS 2
 #define DROP_CHANCE 20
-#define COMBO_HUD_X 1
+#define COMBO_HUD_X 0
 #define COMBO_HUD_Y MAP_HEIGHT + 1
 
 #define COLOR_WALL YELLOW
@@ -387,6 +387,11 @@ void moveEnemies() {
         int nextY = enemies[i].y + dy;
 
         if (nextX == player.x && nextY == player.y) {
+            screenSetColor(RED, BLACK);
+            screenGotoxy(player.x, player.y);
+            printf("@");
+            fflush(stdout);
+            usleep(100000);  // Mantém o feedback vermelho por 100ms
             player.health--;
             enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
             drawHUD();
