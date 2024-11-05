@@ -8,6 +8,7 @@
 
 #define MAP_WIDTH 55
 #define MAP_HEIGHT 21
+#define NUM_MAPS 2
 #define MAX_ENEMIES 8
 #define MAX_AMMO 5
 #define PLAYER_MAX_HEALTH 3
@@ -26,28 +27,53 @@
 #define COLOR_DROP_HEALTH RED
 #define COLOR_DOOR LIGHTGREEN
 
-char map[MAP_HEIGHT][MAP_WIDTH] = {
-    "#######################################################",
-    "#######################################################",
-    "##                 #           #                      #",
-    "##    #            #           #                      #",
-    "##    #            #           #                      #",
-    "##    ####  ################   ########       #########",
-    "##    #                    #                          #",
-    "##    #######              #                          #",
-    "##                                                    #",
-    "##      ########   ###################            #####",
-    "##                 #                              #   #",
-    "##      ########   #                              #  ##",
-    "##      #                   #                ######  ##",
-    "##      #      #########    #   ####         #       ##",
-    "##             #            #      #         #   ######",
-    "##             #            #      #         #       ##",
-    "##                                 #         ######  ##",
-    "#######    ####     ###    ###     ###       #       ##",
-    "##                  #        #               #  #######",
-    "##                  #        #                  #######",
-    "#######################################################"
+char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
+    {
+        "#######################################################",
+        "#######################################################",
+        "##                 #           #                      #",
+        "##    #            #           #                      #",
+        "##    #            #           #                      #",
+        "##    ####  ################   ########       #########",
+        "##    #                    #                          #",
+        "##    #######              #                          #",
+        "##                                                    #",
+        "##      ########   ###################            #####",
+        "##                 #                              #   #",
+        "##      ########   #                              #  ##",
+        "##      #                   #                ######  ##",
+        "##      #      #########    #   ####         #       ##",
+        "##             #            #      #         #   ######",
+        "##             #            #      #         #       ##",
+        "##                                 #         ######  ##",
+        "#######    ####     ###    ###     ###       #       ##",
+        "##                  #        #               #  #######",
+        "##                  #        #                  #######",
+        "#######################################################"
+    },
+    {
+        "#######################################################",
+        "#######################################################",
+        "##                                                    #",
+        "####################                ###################",
+        "##                 #                #                 #",
+        "##         #########                ########          #",
+        "##         #                               #          #",
+        "##         #                               #          #",
+        "##         #                               #          #",
+        "##         #                               #          #",
+        "##                                                    #",
+        "##                                                    #",
+        "##         #                               #          #",
+        "##         #                               #          #",
+        "##         #                               #          #",
+        "##         #                               #          #",
+        "##         ########                 ########          #",
+        "##                        # #                         #",
+        "##                       ## ##                        #",
+        "##                      ###D###                       #", 
+        "#######################################################"
+    }
 };
 
 typedef struct {
@@ -82,6 +108,7 @@ int score = 0, combo = 1, enemies_dead;
 time_t lastKillTime;
 
 int porta_x, porta_y;
+int mapIndex;
 
 void screenDrawMap();
 void drawHUD();
@@ -106,8 +133,9 @@ int main() {
     keyboardInit();
     screenInit(0);
     srand(time(NULL));
+    mapIndex = 1;
 
-    screenDrawMap();
+    screenDrawMap(mapIndex);
     drawPlayer();
     drawEnemies();
     drawHUD();
@@ -156,10 +184,10 @@ int main() {
     }
 }
 
-void screenDrawMap() {
+void screenDrawMap(int mapIndex) {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
-            char cell = map[y][x];
+            char cell = maps[mapIndex][y][x];  // Acessa o mapa específico usando mapIndex
             screenGotoxy(x, y);
 
             switch(cell) {
@@ -177,6 +205,7 @@ void screenDrawMap() {
     screenSetColor(WHITE, BLACK);
     fflush(stdout);
 }
+
 
 void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
@@ -294,7 +323,7 @@ void movePlayer(int dx, int dy) {
     int newX = player.x + dx;
     int newY = player.y + dy;
 
-    if (map[newY][newX] != '#' && !isOccupiedByEnemy(newX, newY)) {
+    if (maps[mapIndex][newY][newX] != '#' && !isOccupiedByEnemy(newX, newY)) {
         screenGotoxy(player.x, player.y);
         printf(" ");
 
@@ -342,11 +371,16 @@ void moveEnemies() {
             dy = (rand() % 3) - 1;
         } else {
             // Persegue o jogador
-            if (map[enemies[i].y][enemies[i].x + 1] != '#' && enemies[i].x < player.x) dx = 1;
-            else if (map[enemies[i].y][enemies[i].x - 1] != '#' && enemies[i].x > player.x) dx = -1;
+            if (maps[mapIndex][enemies[i].y][enemies[i].x + 1] != '#' && enemies[i].x < player.x) 
+                dx = 1;
+            else if (maps[mapIndex][enemies[i].y][enemies[i].x - 1] != '#' && enemies[i].x > player.x) 
+                dx = -1;
 
-            if (map[enemies[i].y + 1][enemies[i].x] != '#' && enemies[i].y < player.y) dy = 1;
-            else if (map[enemies[i].y - 1][enemies[i].x] != '#' && enemies[i].y > player.y) dy = -1;
+            if (maps[mapIndex][enemies[i].y + 1][enemies[i].x] != '#' && enemies[i].y < player.y) 
+                dy = 1;
+            else if (maps[mapIndex][enemies[i].y - 1][enemies[i].x] != '#' && enemies[i].y > player.y) 
+                dy = -1;
+
         }
 
         int nextX = enemies[i].x + dx;
@@ -363,7 +397,7 @@ void moveEnemies() {
             continue;
         }
 
-        if (map[nextY][nextX] != '#' && !isOccupiedByEnemy(nextX, nextY)) {
+        if (maps[mapIndex][nextY][nextX] != '#' && !isOccupiedByEnemy(nextX, nextY)) {
             screenGotoxy(enemies[i].x, enemies[i].y);
             printf(" ");
             enemies[i].x = nextX;
@@ -382,7 +416,7 @@ void spawnEnemies() {
             do {
                 spawnX = rand() % MAP_WIDTH;
                 spawnY = rand() % MAP_HEIGHT;
-            } while (isOccupiedByEnemy(spawnX, spawnY) || abs(spawnX - player.x) < 5 || abs(spawnY - player.y) < 5 || map[spawnY][spawnX] == '#');
+            } while (isOccupiedByEnemy(spawnX, spawnY) || abs(spawnX - player.x) < 5 || abs(spawnY - player.y) < 5 || maps[mapIndex][spawnY][spawnX] == '#');
 
             enemies[i].x = spawnX;
             enemies[i].y = spawnY;
@@ -401,7 +435,7 @@ void showAttackFeedback() {
 
             int x = player.x + dx;
             int y = player.y + dy;
-            if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT && map[y][x] != '#') {
+            if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT && maps[mapIndex][y][x] != '#') {
                 screenGotoxy(x, y);
                 printf("*");  // Feedback visual do ataque
             }
@@ -432,7 +466,7 @@ void playerAttack() {
     drawPlayer();
 
     usleep(50000);  // Aguarda para mostrar o feedback visual
-    screenDrawMap();
+    screenDrawMap(mapIndex);
     drawPlayer();
     drawEnemies();
     drawWeapon();
@@ -453,7 +487,7 @@ void playerShoot(int dx, int dy) {
     screenSetColor(CYAN, BLACK);
 
     for (int step = 0; step < range; step++) {
-        if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT || map[y][x] == '#') {
+        if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT || maps[mapIndex][y][x] == '#') {
             break;
         }
 
@@ -485,7 +519,7 @@ void playerShoot(int dx, int dy) {
         y += dy;
     }
 
-    screenDrawMap();
+    screenDrawMap(mapIndex);
     drawPlayer();
     drawEnemies();
     drawDrops();
