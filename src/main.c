@@ -6,9 +6,9 @@
 #include "keyboard.h"
 #include "timer.h"
 
-#define MAP_WIDTH 45
+#define MAP_WIDTH 55
 #define MAP_HEIGHT 21
-#define MAX_ENEMIES 5
+#define MAX_ENEMIES 8
 #define MAX_AMMO 5
 #define PLAYER_MAX_HEALTH 3
 #define ENEMY_RESPAWN_INTERVAL 2
@@ -24,29 +24,30 @@
 #define COLOR_ATTACK CYAN
 #define COLOR_DROP_AMMO BLUE
 #define COLOR_DROP_HEALTH RED
+#define COLOR_DOOR LIGHTGREEN
 
 char map[MAP_HEIGHT][MAP_WIDTH] = {
-    "#############################################",
-    "#############################################",
-    "##                             #            #",
-    "##    #            #           #            #",
-    "##    #            #           #            #",
-    "##    ####  ################   ########     #",
-    "##    #                    #                #",
-    "##    #######              #                #",
-    "##                                          #",
-    "##      ####################   ##############",
-    "##                 #                        #",
-    "##      ########   #                        #",
-    "##      #                   #               #",
-    "##      #      #########    #   ####        #",
-    "##             #            #      #        #",
-    "##             #            #      #        #",
-    "##                                 #        #",
-    "#######    ####     ###    ###     ###      #",
-    "##                  #        #              #",
-    "##                  #        #              #",
-    "#############################################"
+    "#######################################################",
+    "#######################################################",
+    "##                 #           #                      #",
+    "##    #            #           #                      #",
+    "##    #            #           #                      #",
+    "##    ####  ################   ########       #########",
+    "##    #                    #                          #",
+    "##    #######              #                          #",
+    "##                                                    #",
+    "##      ###############################################",
+    "##                 #                                 ##",
+    "##      ########   #                        ######   ##",
+    "##      #                   #               ##       ##",
+    "##      #      #########    #   ####        ##   ######",
+    "##             #            #      #        ##   ######",
+    "##             #            #      #        ##       ##",
+    "##                                 #        #######  ##",
+    "#######    ####     ###    ###     ###      ##       ##",
+    "##                  #        #              ##  #######",
+    "##                  #        #              ##         ",
+    "#######################################################"
 };
 
 typedef struct {
@@ -77,8 +78,10 @@ typedef struct {
 Enemy enemies[MAX_ENEMIES] = { {5, 5, 1, 0}, {8, 2, 1, 0}, {15, 7, 1, 0}, {30, 15, 1, 0}, {35, 10, 1, 0} };
 
 time_t lastEnemySpawn;
-int score = 0, combo = 1;
+int score = 0, combo = 1, enemies_dead;
 time_t lastKillTime;
+
+int porta_x, porta_y;
 
 void screenDrawMap();
 void drawHUD();
@@ -86,6 +89,8 @@ void drawPlayer();
 void drawWeapon();
 void drawEnemies();
 void drawDrops();
+void drawDoor();
+void doorVerify();
 void spawnDrop(int x, int y);
 void updateScore(int points, int isEnemyKill);
 int isOccupiedByEnemy(int x, int y);
@@ -111,6 +116,9 @@ int main() {
 
     time_t lastEnemyMove = time(NULL);
     lastEnemySpawn = time(NULL);
+    porta_x = MAP_WIDTH - 1;
+    porta_y = MAP_HEIGHT - 2;
+    enemies_dead = 0;
 
     while (1) {
         if (keyhit()) {
@@ -143,6 +151,8 @@ int main() {
         drawHUD();
         drawWeapon();
         drawDrops();
+        drawDoor();
+        doorVerify();
     }
 }
 
@@ -203,7 +213,7 @@ void drawEnemies() {
 void drawWeapon() {
     if (!player.hasWeapon) {
         screenSetColor(WHITE, BLACK);
-        screenGotoxy(20, 10);
+        screenGotoxy(32, 4);
         printf("W");
         fflush(stdout);
     }
@@ -222,6 +232,23 @@ void drawDrops() {
             }
             fflush(stdout);
         }
+    }
+}
+
+void drawDoor() {
+    if (enemies_dead < 10) return;
+    screenGotoxy(porta_x, porta_y);
+    screenSetColor(COLOR_DOOR, BLACK);
+    printf("D");
+    fflush(stdout);
+}
+
+void doorVerify() {
+    if (enemies_dead >= 10 && player.x == porta_x && player.y == porta_y) {
+        keyboardDestroy();
+        screenClear();
+        printf("Parabéns! Você completou o jogo!\n");
+        exit(0); // Termina o jogo
     }
 }
 
@@ -274,10 +301,10 @@ void movePlayer(int dx, int dy) {
         player.x = newX;
         player.y = newY;
 
-        if (player.x == 20 && player.y == 10) { // Verificando a coleta da arma
+        if (player.x == 32 && player.y == 4) { // Verificando a coleta da arma
             player.hasWeapon = 1;
             player.ammo = MAX_AMMO;
-            screenGotoxy(20, 10);
+            screenGotoxy(32, 4);
             printf(" ");
         }
 
@@ -393,6 +420,7 @@ void playerAttack() {
             screenGotoxy(enemies[i].x, enemies[i].y);
             printf(" ");
             enemies[i].alive = 0;
+            enemies_dead++;
             int dropChance = rand() % 100; // Gera um número aleatório de 0 a 99
             if (dropChance < DROP_CHANCE) { // Se o número gerado for menor que a chance de drop
                 spawnDrop(enemies[i].x, enemies[i].y);  // Gera o drop na posição do inimigo derrotado
@@ -437,6 +465,7 @@ void playerShoot(int dx, int dy) {
         for (int i = 0; i < MAX_ENEMIES; i++) {
             if (enemies[i].alive && enemies[i].x == x && enemies[i].y == y) {
                 enemies[i].alive = 0;
+                enemies_dead++;
                 screenGotoxy(x, y);
                 printf(" ");
                 int dropChance = rand() % 100; // Gera um número aleatório de 0 a 99
