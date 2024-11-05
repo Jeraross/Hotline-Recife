@@ -14,18 +14,23 @@
 #define PLAYER_MAX_HEALTH 3
 #define ENEMY_RESPAWN_INTERVAL 2
 #define ENEMY_COOLDOWN_PERIOD 2  // Tempo que o inimigo fica parado ao colidir com o jogador
-#define MAX_CLIPS 3
+#define MAX_CLIPS 2
 #define DROP_CHANCE 20
+#define COMBO_HUD_X 0
+#define COMBO_HUD_Y MAP_HEIGHT + 1
 
 #define COLOR_WALL YELLOW
 #define COLOR_FLOOR LIGHTGRAY
 #define COLOR_PLAYER GREEN
 #define COLOR_ENEMY MAGENTA
-#define COLOR_ENEMY_HIT WHITE // Cor temporária quando o inimigo atinge o jogador
+#define COLOR_ENEMY_HIT WHITE
 #define COLOR_ATTACK CYAN
 #define COLOR_DROP_AMMO BLUE
 #define COLOR_DROP_HEALTH RED
 #define COLOR_DOOR LIGHTGREEN
+#define COLOR_COMBO1 CYAN
+#define COLOR_COMBO2 GREEN
+#define COLOR_COMBO3 MAGENTA
 
 char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
     {
@@ -104,14 +109,18 @@ typedef struct {
 Enemy enemies[MAX_ENEMIES] = { {5, 5, 1, 0}, {8, 2, 1, 0}, {15, 7, 1, 0}, {30, 15, 1, 0}, {35, 10, 1, 0} };
 
 time_t lastEnemySpawn;
-int score = 0, combo = 1, enemies_dead;
 time_t lastKillTime;
+time_t comboStartTime;
+int score = 0, combo = 1, enemies_dead;
+int comboColors[] = {COLOR_COMBO1, COLOR_COMBO2, COLOR_COMBO3};
+int comboColorIndex = 0;
 
 int porta_x, porta_y;
 int mapIndex;
 
-void screenDrawMap();
+void screenDrawMap(int mapIndex);
 void drawHUD();
+void drawComboHUD();
 void drawPlayer();
 void drawWeapon();
 void drawEnemies();
@@ -133,7 +142,7 @@ int main() {
     keyboardInit();
     screenInit(0);
     srand(time(NULL));
-    mapIndex = 1;
+    mapIndex = 0;
 
     screenDrawMap(mapIndex);
     drawPlayer();
@@ -179,6 +188,11 @@ int main() {
         drawHUD();
         drawWeapon();
         drawDrops();
+        drawComboHUD();  // Atualiza o HUD do combo com cor e tempo
+        // Verificar se o tempo do combo acabou
+        if (combo >= 2 && difftime(time(NULL), comboStartTime) >= 5) {
+            combo = 1;  // Reseta o combo se o tempo acabou
+        }
         drawDoor();
         doorVerify();
     }
@@ -210,8 +224,28 @@ void screenDrawMap(int mapIndex) {
 void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
     screenSetColor(WHITE, BLACK);
-    printf("Vida: %d  Munição: %d/%d Pontos: %d  Combo: x%d \n",
-           player.health, player.ammo, player.clips, score, combo);
+    printf("Vida: %d  Munição: %d/%d Score: %d \n",
+           player.health, player.ammo, player.clips, score);
+    fflush(stdout);
+}
+
+void drawComboHUD() {
+    if (combo < 2) {
+        // Limpa o HUD do combo quando o combo termina
+        screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
+        printf("                  "); // Apaga o texto do combo
+        fflush(stdout);
+        return;
+    }
+
+    // Alternar cor
+    comboColorIndex = (comboColorIndex + 1) % 3;  // Cíclico entre as três cores
+    screenSetColor(comboColors[comboColorIndex], BLACK);
+
+    screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
+    int remainingTime = 5 - (int)difftime(time(NULL), comboStartTime);
+    printf("COMBO X%d TIMER %d ", combo, remainingTime);
+
     fflush(stdout);
 }
 
@@ -297,13 +331,13 @@ void spawnDrop(int x, int y) {
 void updateScore(int points, int isEnemyKill) {
     time_t currentTime = time(NULL);
     if (isEnemyKill) {
-        if (difftime(currentTime, lastKillTime) < 3) {
+        if (difftime(currentTime, comboStartTime) < 5) {
             combo++;
         } else {
             combo = 1;
         }
+        comboStartTime = currentTime;  // Reinicia o timer para o combo
         score += points * combo;
-        lastKillTime = currentTime;
     } else {
         score += points;
     }
@@ -387,6 +421,11 @@ void moveEnemies() {
         int nextY = enemies[i].y + dy;
 
         if (nextX == player.x && nextY == player.y) {
+            screenSetColor(RED, BLACK);
+            screenGotoxy(player.x, player.y);
+            printf("@");
+            fflush(stdout);
+            usleep(100000);  // Mantém o feedback vermelho por 100ms
             player.health--;
             enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
             drawHUD();
