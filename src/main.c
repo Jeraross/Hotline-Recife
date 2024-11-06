@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 #include <unistd.h>
 #include "screen.h"
 #include "keyboard.h"
@@ -9,11 +10,11 @@
 #define MAP_WIDTH 55
 #define MAP_HEIGHT 21
 #define NUM_MAPS 2
-#define MAX_ENEMIES 8
+#define MAX_ENEMIES 5
 #define MAX_AMMO 5
-#define PLAYER_MAX_HEALTH 3
+#define PLAYER_MAX_HEALTH 5
 #define ENEMY_RESPAWN_INTERVAL 2
-#define ENEMY_COOLDOWN_PERIOD 2  // Tempo que o inimigo fica parado ao colidir com o jogador
+#define ENEMY_COOLDOWN_PERIOD 5  // Tempo que o inimigo fica parado ao colidir com o jogador
 #define MAX_CLIPS 2
 #define DROP_CHANCE 20
 #define COMBO_HUD_X 0
@@ -61,7 +62,7 @@ char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
         "#######################################################",
         "##                                                    #",
         "####################                ###################",
-        "##                 #                #                 #",
+        "##                                                    #",
         "##         #########                ########          #",
         "##         #                               #          #",
         "##         #                               #          #",
@@ -98,20 +99,24 @@ typedef struct {
     int clips;
 } Player;
 
-Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 5, 3}; // Inicializando o jogador
+Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 5, 2}; // Inicializando o jogador
 
 typedef struct {
     int x, y;
     int alive;
     int cooldown;
+    int type;
+    int moves;
 } Enemy;
 
-Enemy enemies[MAX_ENEMIES] = { {10, 5, 1, 0}, {8, 2, 1, 0}, {15, 7, 1, 0}, {30, 15, 1, 0}, {35, 10, 1, 0} };
+Enemy enemies[MAX_ENEMIES] = { {10, 5, 1, 0, 0}, {8, 2, 1, 0, 0}, {15, 7, 1, 0, 0}, {30, 15, 1, 0, 0}, {35, 10, 1, 0, 0} };
+
 
 time_t lastEnemySpawn;
 time_t lastKillTime;
 time_t comboStartTime;
-int score = 0, combo = 1, pontosGanhos = 0, enemies_dead;
+
+int score = 0, combo = 1, pontosGanhos = 0, playerDetected = 0, px = 0, py = 0, enemies_dead;
 int comboColors[] = {COLOR_COMBO1, COLOR_COMBO2, COLOR_COMBO3};
 int comboColorIndex = 0;
 
@@ -136,6 +141,7 @@ void spawnEnemies();
 void showAttackFeedback();
 void playerAttack();
 void playerShoot(int dx, int dy);
+void enemyShoot(int enemyIndex, int plx, int ply);
 void reload();
 
 int main() {
@@ -183,7 +189,11 @@ int main() {
             }
         }
 
-        if ((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.5) { // intervalo de 0.5 segundos
+        if (((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.6) && mapIndex == 0 ) {
+            moveEnemies();
+            lastEnemyMove = clock();
+        }
+        else if (((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.3) && mapIndex == 1 ) {
             moveEnemies();
             lastEnemyMove = clock();
         }
@@ -200,12 +210,22 @@ int main() {
         }
 
         drawDoor();
+
         if (doorVerify()){
+            // Reinicia o array de inimigos
+            memset(enemies, 0, sizeof(enemies)); // Zera todos os inimigos
+
+            // Reinicia o array de drops
+            memset(drops, 0, sizeof(drops)); // Zera todos os drops
+
+            // Reinicia o jogador e o cenário
             player.x = 2;
             player.y = 2;
             porta_x = 27;
             porta_y = 19;
             player.hasWeapon = 0;
+
+            // Limpa a tela e desenha o novo mapa
             screenClear();
             screenDrawMap(mapIndex);
             drawPlayer();
@@ -282,11 +302,23 @@ void drawEnemies() {
 
             if (enemies[i].cooldown > 0) {
                 screenSetColor(COLOR_ENEMY_HIT, BLACK);
-            } else {
+            }
+            else if (enemies[i].moves <= 5 && enemies[i].moves != 0 && enemies[i].type == 2) {
+                screenSetColor(RED, BLACK);  // Muda para branco antes de atirar
+            }
+            else {
                 screenSetColor(COLOR_ENEMY, BLACK);
             }
 
-            printf("E");
+            if (enemies[i].type == 0) {
+                printf("E");
+            }
+            if (enemies[i].type == 1) {
+                printf("D");
+            }
+            if (enemies[i].type == 2) {
+                printf("C");
+            }
         }
     }
     fflush(stdout);
@@ -303,7 +335,7 @@ void drawGun() {
     if (!player.hasWeapon && mapIndex == 1) {
         screenSetColor(WHITE, BLACK);
         screenGotoxy(28, 10);
-        printf("G");
+        printf("S");
         fflush(stdout);
     }
 
@@ -438,8 +470,74 @@ void movePlayer(int dx, int dy) {
 void moveEnemies() {
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) continue;
+
         if (enemies[i].cooldown > 0) {
             enemies[i].cooldown--;
+            continue;
+        }
+
+        if (enemies[i].type == 2) {
+
+            if (!playerDetected) {
+                // Verifica se o jogador está na mesma linha, coluna ou diagonal
+                // Horizontal (mesma linha)
+                if (enemies[i].y == player.y) {
+                    int x = enemies[i].x < player.x ? enemies[i].x + 1 : enemies[i].x - 1;
+                    while (x >= 0 && x < MAP_WIDTH && maps[mapIndex][enemies[i].y][x] != '#') {
+                        if (x == player.x) {
+                            px = player.x;
+                            py = player.y;
+                            playerDetected = 1;
+                            break;
+                        }
+                        x += (enemies[i].x < player.x ? 1 : -1);
+                    }
+                }
+
+                // Vertical (mesma coluna)
+                if (!playerDetected && enemies[i].x == player.x) {
+                    int y = enemies[i].y < player.y ? enemies[i].y + 1 : enemies[i].y - 1;
+                    while (y >= 0 && y < MAP_HEIGHT && maps[mapIndex][y][enemies[i].x] != '#') {
+                        if (y == player.y) {
+                            px = player.x;
+                            py = player.y;
+                            playerDetected = 1;
+                            break;
+                        }
+                        y += (enemies[i].y < player.y ? 1 : -1);
+                    }
+                }
+
+                // Diagonal
+                if (!playerDetected) {
+                    int dx = (enemies[i].x < player.x) ? 1 : -1;
+                    int dy = (enemies[i].y < player.y) ? 1 : -1;
+                    int x = enemies[i].x + dx, y = enemies[i].y + dy;
+                    while (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT && maps[mapIndex][y][x] != '#') {
+                        if (x == player.x && y == player.y) {
+                            px = player.x;
+                            py = player.y;
+                            playerDetected = 1;
+                            break;
+                        }
+                        x += dx;
+                        y += dy;
+                    }
+                }
+            }
+
+
+            // Se o jogador foi detectado, muda a cor do inimigo para vermelho
+            if (playerDetected) {
+                enemies[i].moves++;  // Inicia a contagem para o tiro
+            }
+
+            // No 4º movimento, o inimigo atira
+            if (enemies[i].moves == 6) {
+                enemyShoot(i, px, py);  // Chama a função para o tiro
+                enemies[i].moves = 0;  // Reseta
+                playerDetected = 0; // Reseta
+            }
             continue;
         }
 
@@ -495,6 +593,7 @@ void moveEnemies() {
 
 void spawnEnemies() {
     if (difftime(time(NULL), lastEnemySpawn) < ENEMY_RESPAWN_INTERVAL) return;
+    int randomEnemy = rand() % 100;
 
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) {
@@ -506,6 +605,18 @@ void spawnEnemies() {
 
             enemies[i].x = spawnX;
             enemies[i].y = spawnY;
+            if (mapIndex == 0) {
+                enemies[i].type = 0;
+            }
+            else if (mapIndex == 1) {
+                if (randomEnemy < 50) {
+                    enemies[i].type = 1;
+                    enemies[i].moves = 0;
+                } else {
+                    enemies[i].type = 2;
+                    enemies[i].moves = 0;
+                }
+            }
             enemies[i].alive = 1;
             lastEnemySpawn = time(NULL);
             break;
@@ -565,8 +676,8 @@ void playerShoot(int dx, int dy) {
 
     int x = player.x + dx;
     int y = player.y + dy;
-    int range;
-    if (dy == 0) range = 10; else if (dx == 0) range = 5; else if (dx != 0 && dy != 0) range = 7;
+    int range = 10;
+
     player.ammo--;
 
     char shotChar;
@@ -610,6 +721,64 @@ void playerShoot(int dx, int dy) {
 
         x += dx;
         y += dy;
+    }
+
+    screenDrawMap(mapIndex);
+    drawPlayer();
+    drawEnemies();
+    drawDrops();
+}
+
+void enemyShoot(int enemyIndex, int plx, int ply) {
+    int dx = plx - enemies[enemyIndex].x;
+    int dy = ply - enemies[enemyIndex].y;
+
+    int range = 10;
+
+    int stepX = (dx == 0) ? 0 : (dx > 0 ? 1 : -1);
+    int stepY = (dy == 0) ? 0 : (dy > 0 ? 1 : -1);
+
+    int x = enemies[enemyIndex].x + stepX;
+    int y = enemies[enemyIndex].y + stepY;
+
+    char shotChar;
+    if (stepX == 0 || stepY == 0) {
+        shotChar = (stepX == 0) ? '|' : '-';  // Vertical ou horizontal
+    } else {
+        shotChar = (stepX == stepY) ? '\\' : '/';  // Diagonais
+    }
+
+    screenSetColor(RED, BLACK);
+
+    for (int step = 0; step < range; step++) {
+        if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT || maps[mapIndex][y][x] == '#') {
+            break;
+        }
+
+        screenGotoxy(x, y);
+        printf("%c", shotChar);
+        fflush(stdout);
+        usleep(25000);
+
+        if (x == player.x && y == player.y) {
+            player.health--;  // O jogador perde vida
+            screenGotoxy(x, y);
+            printf(" ");
+            drawHUD();  // Atualiza o HUD
+
+            if (player.health <= 0) {
+                printf("Game Over!\n");
+                exit(0);
+            }
+            break;  // O tiro atinge o jogador, então interrompe o loop
+        }
+
+        screenGotoxy(x, y);
+        printf(" ");
+        fflush(stdout);
+
+        x += stepX;
+        y += stepY;
     }
 
     screenDrawMap(mapIndex);
