@@ -95,9 +95,12 @@ typedef struct {
     int x, y;
     int health;
     int hasWeapon;
+    int hasShotgun;
     int ammo;
     int clips;
+    int currentWeapon; // 0 para pistola, 1 para shotgun
 } Player;
+
 
 Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 5, 2}; // Inicializando o jogador
 
@@ -141,6 +144,7 @@ void spawnEnemies();
 void showAttackFeedback();
 void playerAttack();
 void playerShoot(int dx, int dy);
+void playerShotgunShoot(int dx, int dy);
 void enemyShoot(int enemyIndex, int plx, int ply);
 void reload();
 
@@ -149,6 +153,11 @@ int main() {
     screenInit(0);
     srand(time(NULL));
     mapIndex = 0;
+    player.ammo = MAX_AMMO;
+    player.clips = 3;
+    player.hasWeapon = 0;
+    player.hasShotgun = 0;
+    player.currentWeapon = -1; // Começa sem arma
 
     screenDrawMap(mapIndex);
     drawPlayer();
@@ -173,15 +182,21 @@ int main() {
                 case 'a': movePlayer(-1, 0); break;
                 case 'd': movePlayer(1, 0); break;
                 case ' ': playerAttack(); break;
-                case 'i': playerShoot(0, -1); break;
-                case 'k': playerShoot(0, 1); break;
-                case 'j': playerShoot(-1, 0); break;
-                case 'l': playerShoot(1, 0); break;
-                case 'u': playerShoot(-1, -1); break;  // Diagonal superior esquerda
+                case 'i': if (player.currentWeapon == 1) playerShotgunShoot(0, -1); else playerShoot(0, -1); break;
+                case 'k': if (player.currentWeapon == 1) playerShotgunShoot(0, 1); else playerShoot(0, 1); break;
+                case 'j': if (player.currentWeapon == 1) playerShotgunShoot(-1, 0); else playerShoot(-1, 0); break;
+                case 'l': if (player.currentWeapon == 1) playerShotgunShoot(1, 0); else playerShoot(1, 0); break;
+                case 'u': playerShoot(-1, -1); break;   // Diagonal superior esquerda
                 case 'o': playerShoot(1, -1); break;   // Diagonal superior direita
                 case 'm': playerShoot(-1, 1); break;   // Diagonal inferior esquerda
                 case ',': playerShoot(1, 1); break;    // Diagonal inferior direita
                 case 'r': reload(); break;
+                case 't':
+                    if (player.hasWeapon && player.hasShotgun) {
+                        player.currentWeapon = 1 - player.currentWeapon; // Alterna entre 0 e 1
+                    }
+                    break;
+
                 case 'q':
                     keyboardDestroy();
                     screenDestroy();
@@ -223,7 +238,6 @@ int main() {
             player.y = 2;
             porta_x = 27;
             porta_y = 19;
-            player.hasWeapon = 0;
 
             // Limpa a tela e desenha o novo mapa
             screenClear();
@@ -263,10 +277,12 @@ void screenDrawMap(int mapIndex) {
 void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
     screenSetColor(WHITE, BLACK);
-    printf("Vida: %d  Munição: %d/%d Score: %d ",
-           player.health, player.ammo, player.clips, score);
-    fflush(stdout);
+    const char *currentWeaponName = (player.currentWeapon == 0) ? "Pistola" :
+                                    (player.currentWeapon == 1) ? "Shotgun" : "Desarmado";
+    printf("Vida: %d  Munição: %d/%d Score: %d  Arma: %s",
+           player.health, player.ammo, player.clips, score, currentWeaponName);
 }
+
 
 void drawComboHUD() {
     if (combo < 2) {
@@ -331,14 +347,12 @@ void drawGun() {
         printf("G");
         fflush(stdout);
     }
-
-    if (!player.hasWeapon && mapIndex == 1) {
+    if (!player.hasShotgun && mapIndex == 1) {
         screenSetColor(WHITE, BLACK);
         screenGotoxy(28, 10);
         printf("S");
         fflush(stdout);
     }
-
 }
 
 void drawDrops() {
@@ -369,8 +383,6 @@ int doorVerify() {
     if (enemies_dead >= 10 && player.x == porta_x && player.y == porta_y) {
         mapIndex++;
         enemies_dead = 0;
-        player.x = 1;
-        player.y = 1;
         if (mapIndex >= NUM_MAPS) {
             screenClear();
             keyboardDestroy();
@@ -438,15 +450,17 @@ void movePlayer(int dx, int dy) {
 
         if (mapIndex==0 &&player.x == 53 && player.y == 3) { // Verificando a coleta da arma
             player.hasWeapon = 1;
+            player.currentWeapon = 0;
             player.ammo = MAX_AMMO;
             screenGotoxy(32, 4);
             printf(" ");
         }
 
         if (mapIndex==1 &&player.x == 28 && player.y == 10) { // Verificando a coleta da arma
-            player.hasWeapon = 1;
+            player.hasShotgun = 1;
+            player.currentWeapon = 1;
             player.ammo = MAX_AMMO;
-            screenGotoxy(32, 4);
+            screenGotoxy(28, 10);
             printf(" ");
         }
 
@@ -465,6 +479,7 @@ void movePlayer(int dx, int dy) {
     }
 
     drawPlayer();
+    drawHUD();
 }
 
 void moveEnemies() {
@@ -729,6 +744,70 @@ void playerShoot(int dx, int dy) {
     drawDrops();
 }
 
+void playerShotgunShoot(int dx, int dy) {
+    if (!player.hasShotgun || player.ammo <= 0) return;
+
+    int x = player.x + dx;
+    int y = player.y + dy;
+    int range = 5;  // A shotgun tem um alcance de 5
+    int spread[] = {1, 3, 5, 5, 5};  // Define o número de blocos atingidos por cada "passo" da shotgun
+
+    player.ammo--;
+
+    screenSetColor(CYAN, BLACK);
+
+    for (int step = 0; step < range; step++) {
+        int spreadRadius = spread[step] / 2;  // Define a "largura" do tiro para a shotgun
+        
+        for (int offset = -spreadRadius; offset <= spreadRadius; offset++) {
+            int targetX = x + (dy == 0 ? 0 : offset);  // Espalha horizontalmente, se dx != 0
+            int targetY = y + (dx == 0 ? 0 : offset);  // Espalha verticalmente, se dy != 0
+
+            // Verifica se a posição está dentro dos limites do mapa
+            if (targetX < 0 || targetX >= MAP_WIDTH || targetY < 0 || targetY >= MAP_HEIGHT) continue;
+
+            // Verifica colisão com paredes
+            if (maps[mapIndex][targetY][targetX] == '#') continue;
+
+            // Desenha o tiro na posição atual
+            screenGotoxy(targetX, targetY);
+            printf("*");  // Caracter representando o tiro da shotgun
+            fflush(stdout);
+            usleep(10000);  // Tempo reduzido para o efeito de espalhamento
+
+            // Checa se o tiro atingiu algum inimigo
+            for (int i = 0; i < MAX_ENEMIES; i++) {
+                if (enemies[i].alive && enemies[i].x == targetX && enemies[i].y == targetY) {
+                    enemies[i].alive = 0;
+                    enemies_dead++;
+                    screenGotoxy(targetX, targetY);
+                    printf(" ");
+                    int dropChance = rand() % 100;
+                    if (dropChance < DROP_CHANCE) {
+                        spawnDrop(enemies[i].x, enemies[i].y);
+                    }
+                    pontosGanhos = 100 * combo;
+                    updateScore(100, 1);
+                }
+            }
+
+            // Limpa o tiro na posição atual após breve exibição
+            screenGotoxy(targetX, targetY);
+            printf(" ");
+            fflush(stdout);
+        }
+
+        // Avança o tiro da shotgun
+        x += dx;
+        y += dy;
+    }
+
+    // Atualiza o mapa e o jogador
+    screenDrawMap(mapIndex);
+    drawPlayer();
+    drawEnemies();
+    drawDrops();
+}
 void enemyShoot(int enemyIndex, int plx, int ply) {
     int dx = plx - enemies[enemyIndex].x;
     int dy = ply - enemies[enemyIndex].y;
