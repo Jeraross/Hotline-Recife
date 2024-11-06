@@ -106,12 +106,12 @@ typedef struct {
     int cooldown;
 } Enemy;
 
-Enemy enemies[MAX_ENEMIES] = { {5, 5, 1, 0}, {8, 2, 1, 0}, {15, 7, 1, 0}, {30, 15, 1, 0}, {35, 10, 1, 0} };
+Enemy enemies[MAX_ENEMIES] = { {10, 5, 1, 0}, {8, 2, 1, 0}, {15, 7, 1, 0}, {30, 15, 1, 0}, {35, 10, 1, 0} };
 
 time_t lastEnemySpawn;
 time_t lastKillTime;
 time_t comboStartTime;
-int score = 0, combo = 1, enemies_dead;
+int score = 0, combo = 1, pontosGanhos = 0, enemies_dead;
 int comboColors[] = {COLOR_COMBO1, COLOR_COMBO2, COLOR_COMBO3};
 int comboColorIndex = 0;
 
@@ -151,7 +151,7 @@ int main() {
     drawGun();
     drawDrops();
 
-    time_t lastEnemyMove = time(NULL);
+    clock_t lastEnemyMove = clock();
     lastEnemySpawn = time(NULL);
     porta_x = MAP_WIDTH - 2;
     porta_y = 10;
@@ -171,6 +171,10 @@ int main() {
                 case 'k': playerShoot(0, 1); break;
                 case 'j': playerShoot(-1, 0); break;
                 case 'l': playerShoot(1, 0); break;
+                case 'u': playerShoot(-1, -1); break;  // Diagonal superior esquerda
+                case 'o': playerShoot(1, -1); break;   // Diagonal superior direita
+                case 'm': playerShoot(-1, 1); break;   // Diagonal inferior esquerda
+                case ',': playerShoot(1, 1); break;    // Diagonal inferior direita
                 case 'r': reload(); break;
                 case 'q':
                     keyboardDestroy();
@@ -179,20 +183,22 @@ int main() {
             }
         }
 
-        if (difftime(time(NULL), lastEnemyMove) >= 1) {
+        if ((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.5) { // intervalo de 0.5 segundos
             moveEnemies();
-            lastEnemyMove = time(NULL);
+            lastEnemyMove = clock();
         }
 
         spawnEnemies();
+        drawComboHUD();  // Atualiza o HUD do combo com cor e tempo
         drawHUD();
         drawGun();
         drawDrops();
-        drawComboHUD();  // Atualiza o HUD do combo com cor e tempo
+
         // Verificar se o tempo do combo acabou
         if (combo >= 2 && difftime(time(NULL), comboStartTime) >= 5) {
             combo = 1;  // Reseta o combo se o tempo acabou
         }
+
         drawDoor();
         if (doorVerify()){
             player.x = 2;
@@ -237,7 +243,7 @@ void screenDrawMap(int mapIndex) {
 void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
     screenSetColor(WHITE, BLACK);
-    printf("Vida: %d  Munição: %d/%d Score: %d \n",
+    printf("Vida: %d  Munição: %d/%d Score: %d ",
            player.health, player.ammo, player.clips, score);
     fflush(stdout);
 }
@@ -246,7 +252,7 @@ void drawComboHUD() {
     if (combo < 2) {
         // Limpa o HUD do combo quando o combo termina
         screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
-        printf("                  "); // Apaga o texto do combo
+        printf("                               "); // Apaga o texto do combo
         fflush(stdout);
         return;
     }
@@ -257,7 +263,7 @@ void drawComboHUD() {
 
     screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
     int remainingTime = 5 - (int)difftime(time(NULL), comboStartTime);
-    printf("COMBO X%d TIMER %d ", combo, remainingTime);
+    printf("COMBO X%d   TIMER %d   +%d ", combo, remainingTime, pontosGanhos);
 
     fflush(stdout);
 }
@@ -539,13 +545,14 @@ void playerAttack() {
             if (dropChance < DROP_CHANCE) { // Se o número gerado for menor que a chance de drop
                 spawnDrop(enemies[i].x, enemies[i].y);  // Gera o drop na posição do inimigo derrotado
             }
+            pontosGanhos = 100 * combo;
             updateScore(100, 1);
         }
     }
     screenGotoxy(player.x, player.y);
     drawPlayer();
 
-    usleep(50000);  // Aguarda para mostrar o feedback visual
+    usleep(25000);  // Aguarda para mostrar o feedback visual
     screenDrawMap(mapIndex);
     drawPlayer();
     drawEnemies();
@@ -559,10 +566,15 @@ void playerShoot(int dx, int dy) {
     int x = player.x + dx;
     int y = player.y + dy;
     int range;
-    if (dy == 0) range = 10; else range = 5;
+    if (dy == 0) range = 10; else if (dx == 0) range = 5; else if (dx != 0 && dy != 0) range = 7;
     player.ammo--;
 
-    char shotChar = (dx == 0) ? '|' : '-';
+    char shotChar;
+    if (dx == 0 || dy == 0) {
+        shotChar = (dx == 0) ? '|' : '-';  // Vertical ou horizontal
+    } else {
+        shotChar = (dx == dy) ? '\\' : '/';  // Diagonais
+    }
 
     screenSetColor(CYAN, BLACK);
 
@@ -574,7 +586,7 @@ void playerShoot(int dx, int dy) {
         screenGotoxy(x, y);
         printf("%c", shotChar);
         fflush(stdout);
-        usleep(50000);
+        usleep(25000);
 
         for (int i = 0; i < MAX_ENEMIES; i++) {
             if (enemies[i].alive && enemies[i].x == x && enemies[i].y == y) {
@@ -586,6 +598,7 @@ void playerShoot(int dx, int dy) {
                 if (dropChance < DROP_CHANCE) { // Se o número gerado for menor que a chance de drop
                     spawnDrop(enemies[i].x, enemies[i].y);  // Gera o drop na posição do inimigo derrotado
                 }
+                pontosGanhos = 100 * combo;
                 updateScore(100, 1);
                 return;
             }
