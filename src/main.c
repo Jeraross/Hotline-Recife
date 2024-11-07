@@ -102,7 +102,7 @@ typedef struct {
 } Player;
 
 
-Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 5, 2}; // Inicializando o jogador
+Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 0, MAX_AMMO, MAX_CLIPS, -1}; // Inicializando o jogador
 
 typedef struct {
     int x, y;
@@ -152,12 +152,8 @@ int main() {
     keyboardInit();
     screenInit(0);
     srand(time(NULL));
-    mapIndex = 0;
-    player.ammo = MAX_AMMO;
-    player.clips = 3;
-    player.hasWeapon = 0;
-    player.hasShotgun = 0;
-    player.currentWeapon = -1; // Começa sem arma
+    mapIndex = 1;
+
 
     screenDrawMap(mapIndex);
     drawPlayer();
@@ -590,6 +586,8 @@ void moveEnemies() {
             enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
             drawHUD();
             if (player.health <= 0) {
+                keyboardDestroy();
+                screenClear();
                 printf("Game Over!\n");
                 exit(0);
             }
@@ -626,7 +624,6 @@ void spawnEnemies() {
             else if (mapIndex == 1) {
                 if (randomEnemy < 50) {
                     enemies[i].type = 1;
-                    enemies[i].moves = 0;
                 } else {
                     enemies[i].type = 2;
                     enemies[i].moves = 0;
@@ -749,8 +746,18 @@ void playerShotgunShoot(int dx, int dy) {
 
     int x = player.x + dx;
     int y = player.y + dy;
-    int range = 5;  // A shotgun tem um alcance de 5
-    int spread[] = {1, 3, 5, 5, 5};  // Define o número de blocos atingidos por cada "passo" da shotgun
+    int range;
+    int spread[8];
+
+    if (dx == 0) {
+        range = 4;
+        int tempSpread[4] = {1, 3, 5, 5};
+        for (int i = 0; i < range; i++) spread[i] = tempSpread[i];
+    } else { 
+        range = 7;
+        int tempSpread[7] = {1, 3, 3, 3, 5, 5, 5};
+        for (int i = 0; i < range; i++) spread[i] = tempSpread[i];
+    }
 
     player.ammo--;
 
@@ -790,11 +797,6 @@ void playerShotgunShoot(int dx, int dy) {
                     updateScore(100, 1);
                 }
             }
-
-            // Limpa o tiro na posição atual após breve exibição
-            screenGotoxy(targetX, targetY);
-            printf(" ");
-            fflush(stdout);
         }
 
         // Avança o tiro da shotgun
