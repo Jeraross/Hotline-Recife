@@ -10,7 +10,7 @@
 #define MAP_WIDTH 55
 #define MAP_HEIGHT 21
 #define NUM_MAPS 2
-#define MAX_ENEMIES 5
+#define MAX_ENEMIES 7
 #define MAX_AMMO 5
 #define PLAYER_MAX_HEALTH 5
 #define ENEMY_RESPAWN_INTERVAL 2
@@ -110,16 +110,17 @@ typedef struct {
     int cooldown;
     int type;
     int moves;
+    int playerDetected;
+    int px, py;
 } Enemy;
 
 Enemy enemies[MAX_ENEMIES] = { {10, 5, 1, 0, 0}, {8, 2, 1, 0, 0}, {15, 7, 1, 0, 0}, {30, 15, 1, 0, 0}, {35, 10, 1, 0, 0} };
 
 
 time_t lastEnemySpawn;
-time_t lastKillTime;
 time_t comboStartTime;
 
-int score = 0, combo = 1, pontosGanhos = 0, playerDetected = 0, px = 0, py = 0, enemies_dead;
+int score = 0, combo = 1, pontosGanhos = 0, px = 0, py = 0, enemies_dead;
 int comboColors[] = {COLOR_COMBO1, COLOR_COMBO2, COLOR_COMBO3};
 int comboColorIndex = 0;
 
@@ -154,7 +155,7 @@ int main() {
     srand(time(NULL));
     mapIndex = 0;
     player.ammo = MAX_AMMO;
-    player.clips = 3;
+    player.clips = 2;
     player.hasWeapon = 0;
     player.hasShotgun = 0;
     player.currentWeapon = -1; // Começa sem arma
@@ -278,8 +279,8 @@ void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
     screenSetColor(WHITE, BLACK);
     const char *currentWeaponName = (player.currentWeapon == 0) ? "Pistola" :
-                                    (player.currentWeapon == 1) ? "Shotgun" : "Desarmado";
-    printf("Vida: %d  Munição: %d/%d Score: %d  Arma: %s",
+                                    (player.currentWeapon == 1) ? "Shotgun" : "Nada";
+    printf("Vida: %d  Munição: %d/%d  Score: %d  Arma: %s",
            player.health, player.ammo, player.clips, score, currentWeaponName);
 }
 
@@ -288,7 +289,7 @@ void drawComboHUD() {
     if (combo < 2) {
         // Limpa o HUD do combo quando o combo termina
         screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
-        printf("                               "); // Apaga o texto do combo
+        printf("                                 "); // Apaga o texto do combo
         fflush(stdout);
         return;
     }
@@ -299,7 +300,7 @@ void drawComboHUD() {
 
     screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
     int remainingTime = 5 - (int)difftime(time(NULL), comboStartTime);
-    printf("COMBO X%d   TIMER %d   +%d ", combo, remainingTime, pontosGanhos);
+    printf("COMBO X%d    TIMER %d    +%d ", combo, remainingTime, pontosGanhos);
 
     fflush(stdout);
 }
@@ -492,69 +493,92 @@ void moveEnemies() {
         }
 
         if (enemies[i].type == 2) {
-
-            if (!playerDetected) {
-                // Verifica se o jogador está na mesma linha, coluna ou diagonal
-                // Horizontal (mesma linha)
-                if (enemies[i].y == player.y) {
-                    int x = enemies[i].x < player.x ? enemies[i].x + 1 : enemies[i].x - 1;
-                    while (x >= 0 && x < MAP_WIDTH && maps[mapIndex][enemies[i].y][x] != '#') {
-                        if (x == player.x) {
-                            px = player.x;
-                            py = player.y;
-                            playerDetected = 1;
-                            break;
-                        }
-                        x += (enemies[i].x < player.x ? 1 : -1);
+            if (!enemies[i].playerDetected) {
+                // Verificação Horizontal (esquerda e direita)
+                for (int x = enemies[i].x + 1; x < MAP_WIDTH && maps[mapIndex][enemies[i].y][x] != '#'; x++) {
+                    if (x == player.x && enemies[i].y == player.y) {
+                        enemies[i].px = player.x;
+                        enemies[i].py = player.y;
+                        enemies[i].playerDetected = 1;
+                        break;
+                    }
+                }
+                for (int x = enemies[i].x - 1; x >= 0 && maps[mapIndex][enemies[i].y][x] != '#'; x--) {
+                    if (x == player.x && enemies[i].y == player.y) {
+                        enemies[i].px = player.x;
+                        enemies[i].py = player.y;
+                        enemies[i].playerDetected = 1;
+                        break;
                     }
                 }
 
-                // Vertical (mesma coluna)
-                if (!playerDetected && enemies[i].x == player.x) {
-                    int y = enemies[i].y < player.y ? enemies[i].y + 1 : enemies[i].y - 1;
-                    while (y >= 0 && y < MAP_HEIGHT && maps[mapIndex][y][enemies[i].x] != '#') {
-                        if (y == player.y) {
-                            px = player.x;
-                            py = player.y;
-                            playerDetected = 1;
-                            break;
-                        }
-                        y += (enemies[i].y < player.y ? 1 : -1);
+                // Verificação Vertical (acima e abaixo)
+                for (int y = enemies[i].y + 1; y < MAP_HEIGHT && maps[mapIndex][y][enemies[i].x] != '#'; y++) {
+                    if (enemies[i].x == player.x && y == player.y) {
+                        enemies[i].px = player.x;
+                        enemies[i].py = player.y;
+                        enemies[i].playerDetected = 1;
+                        break;
+                    }
+                }
+                for (int y = enemies[i].y - 1; y >= 0 && maps[mapIndex][y][enemies[i].x] != '#'; y--) {
+                    if (enemies[i].x == player.x && y == player.y) {
+                        enemies[i].px = player.x;
+                        enemies[i].py = player.y;
+                        enemies[i].playerDetected = 1;
+                        break;
                     }
                 }
 
-                // Diagonal
-                if (!playerDetected) {
-                    int dx = (enemies[i].x < player.x) ? 1 : -1;
-                    int dy = (enemies[i].y < player.y) ? 1 : -1;
-                    int x = enemies[i].x + dx, y = enemies[i].y + dy;
-                    while (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT && maps[mapIndex][y][x] != '#') {
-                        if (x == player.x && y == player.y) {
-                            px = player.x;
-                            py = player.y;
-                            playerDetected = 1;
-                            break;
-                        }
-                        x += dx;
-                        y += dy;
+                // Verificação Diagonal (cima-esquerda, cima-direita, baixo-esquerda, baixo-direita)
+                int dx, dy;
+                for (dx = 1, dy = 1; enemies[i].x + dx < MAP_WIDTH && enemies[i].y + dy < MAP_HEIGHT && maps[mapIndex][enemies[i].y + dy][enemies[i].x + dx] != '#'; dx++, dy++) {
+                    if (enemies[i].x + dx == player.x && enemies[i].y + dy == player.y) {
+                        enemies[i].px = player.x;
+                        enemies[i].py = player.y;
+                        enemies[i].playerDetected = 1;
+                        break;
+                    }
+                }
+                for (dx = -1, dy = 1; enemies[i].x + dx >= 0 && enemies[i].y + dy < MAP_HEIGHT && maps[mapIndex][enemies[i].y + dy][enemies[i].x + dx] != '#'; dx--, dy++) {
+                    if (enemies[i].x + dx == player.x && enemies[i].y + dy == player.y) {
+                        enemies[i].px = player.x;
+                        enemies[i].py = player.y;
+                        enemies[i].playerDetected = 1;
+                        break;
+                    }
+                }
+                for (dx = 1, dy = -1; enemies[i].x + dx < MAP_WIDTH && enemies[i].y + dy >= 0 && maps[mapIndex][enemies[i].y + dy][enemies[i].x + dx] != '#'; dx++, dy--) {
+                    if (enemies[i].x + dx == player.x && enemies[i].y + dy == player.y) {
+                        enemies[i].px = player.x;
+                        enemies[i].py = player.y;
+                        enemies[i].playerDetected = 1;
+                        break;
+                    }
+                }
+                for (dx = -1, dy = -1; enemies[i].x + dx >= 0 && enemies[i].y + dy >= 0 && maps[mapIndex][enemies[i].y + dy][enemies[i].x + dx] != '#'; dx--, dy--) {
+                    if (enemies[i].x + dx == player.x && enemies[i].y + dy == player.y) {
+                        enemies[i].px = player.x;
+                        enemies[i].py = player.y;
+                        enemies[i].playerDetected = 1;
+                        break;
                     }
                 }
             }
-
-
-            // Se o jogador foi detectado, muda a cor do inimigo para vermelho
-            if (playerDetected) {
+            if (enemies[i].moves == 5) {
+                enemyShoot(i, enemies[i].px, enemies[i].py);  // Chama a função para o tiro
+                enemies[i].cooldown = 10;
+                enemies[i].moves = 0;  // Reseta
+                enemies[i].playerDetected = 0;    // Reseta
+            }
+            // Preparar o ataque se o jogador foi detectado
+            if (enemies[i].playerDetected) {
                 enemies[i].moves++;  // Inicia a contagem para o tiro
             }
 
-            // No 4º movimento, o inimigo atira
-            if (enemies[i].moves == 6) {
-                enemyShoot(i, px, py);  // Chama a função para o tiro
-                enemies[i].moves = 0;  // Reseta
-                playerDetected = 0; // Reseta
-            }
             continue;
         }
+
 
         int dx = 0, dy = 0;
         int randomMove = rand() % 100;
@@ -626,10 +650,10 @@ void spawnEnemies() {
             else if (mapIndex == 1) {
                 if (randomEnemy < 50) {
                     enemies[i].type = 1;
-                    enemies[i].moves = 0;
                 } else {
                     enemies[i].type = 2;
                     enemies[i].moves = 0;
+                    enemies[i].playerDetected = 0;
                 }
             }
             enemies[i].alive = 1;
@@ -793,7 +817,7 @@ void playerShotgunShoot(int dx, int dy) {
 
             // Limpa o tiro na posição atual após breve exibição
             screenGotoxy(targetX, targetY);
-            printf(" ");
+
             fflush(stdout);
         }
 
@@ -808,6 +832,7 @@ void playerShotgunShoot(int dx, int dy) {
     drawEnemies();
     drawDrops();
 }
+
 void enemyShoot(int enemyIndex, int plx, int ply) {
     int dx = plx - enemies[enemyIndex].x;
     int dy = ply - enemies[enemyIndex].y;
@@ -840,11 +865,13 @@ void enemyShoot(int enemyIndex, int plx, int ply) {
         usleep(25000);
 
         if (x == player.x && y == player.y) {
-            player.health--;  // O jogador perde vida
-            screenGotoxy(x, y);
-            printf(" ");
-            drawHUD();  // Atualiza o HUD
-
+            screenSetColor(RED, BLACK);
+            screenGotoxy(player.x, player.y);
+            printf("@");
+            fflush(stdout);
+            usleep(100000);  // Mantém o feedback vermelho por 100ms
+            player.health--;
+            drawHUD();
             if (player.health <= 0) {
                 printf("Game Over!\n");
                 exit(0);
