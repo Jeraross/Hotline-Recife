@@ -9,8 +9,8 @@
 
 #define MAP_WIDTH 55
 #define MAP_HEIGHT 21
-#define NUM_MAPS 2
-#define MAX_ENEMIES 7
+#define NUM_MAPS 3
+#define MAX_ENEMIES 8
 #define MAX_AMMO 5
 #define PLAYER_MAX_HEALTH 5
 #define ENEMY_RESPAWN_INTERVAL 2
@@ -61,7 +61,7 @@ char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
         "#######################################################",
         "#######################################################",
         "##                                                    #",
-        "####################                ###################",
+        "#######    ####    ####           ####    ####    #####",
         "##                                                    #",
         "##         #########                ########          #",
         "##         #                               #          #",
@@ -78,6 +78,29 @@ char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
         "##                        #  #                        #",
         "##                       ##  ##                       #",
         "##                      ###  ###                      #", 
+        "#######################################################"
+    },
+    {
+        "#######################################################",
+        "#######################################################",
+        "##                                                    #",
+        "##                                                    #",
+        "##         #########                                  #",
+        "##         #                                          #",
+        "##         #                                          #",
+        "##         #                                          #",
+        "##                                                    #",
+        "##                                                    #",
+        "##                                                    #",
+        "##                                                    #",
+        "##                                                    #",
+        "##                                                    #",
+        "##                                          #         #",
+        "##                                          #         #",
+        "##                                          #         #",
+        "##                                   ########         #",
+        "##                                                    #",
+        "##                                                    #",
         "#######################################################"
     }
 };
@@ -116,9 +139,10 @@ typedef struct {
 
 Enemy enemies[MAX_ENEMIES] = { {10, 5, 1, 0, 0}, {8, 2, 1, 0, 0}, {15, 7, 1, 0, 0}, {30, 15, 1, 0, 0}, {35, 10, 1, 0, 0} };
 
-
 time_t lastEnemySpawn;
+time_t lastDropSpawn;
 time_t comboStartTime;
+clock_t lastEnemyMove;
 
 int score = 0, combo = 1, pontosGanhos = 0, px = 0, py = 0, enemies_dead;
 int comboColors[] = {COLOR_COMBO1, COLOR_COMBO2, COLOR_COMBO3};
@@ -167,8 +191,9 @@ int main() {
     drawGun();
     drawDrops();
 
-    clock_t lastEnemyMove = clock();
+    lastEnemyMove = clock();
     lastEnemySpawn = time(NULL);
+    lastDropSpawn = time(NULL);
     porta_x = MAP_WIDTH - 2;
     porta_y = 10;
     enemies_dead = 0;
@@ -205,13 +230,22 @@ int main() {
             }
         }
 
-        if (((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.6) && mapIndex == 0 ) {
+        if (((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.5) && mapIndex == 0 ) {
             moveEnemies();
             lastEnemyMove = clock();
         }
         else if (((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.3) && mapIndex == 1 ) {
             moveEnemies();
             lastEnemyMove = clock();
+        } else if (mapIndex == 2) {
+            if (((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.5)) {
+                  //moveBoss();
+                  lastEnemyMove = clock();
+            }
+            if (difftime(time(NULL), lastDropSpawn) >= 15) {
+                  spawnDrop(-1, -1);
+                  lastDropSpawn = time(NULL);
+            }
         }
 
         spawnEnemies();
@@ -401,6 +435,24 @@ int doorVerify() {
 }
 
 void spawnDrop(int x, int y) {
+    int cont;
+    if (mapIndex == 2) {
+        if (!drops[0].active) {
+            drops[0].x = 9;
+            drops[0].y = 4;
+            drops[0].active = 1;
+            drops[0].type = 1;
+            drawDrops();
+        }
+        if (!drops[1].active) {
+            drops[1].x = 46;
+            drops[1].y = 17;
+            drops[1].active = 1;
+            drops[1].type = 2;
+            drawDrops();
+        }
+        return;
+    }
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!drops[i].active) {
             drops[i].x = x;
@@ -565,7 +617,7 @@ void moveEnemies() {
                     }
                 }
             }
-            if (enemies[i].moves == 5) {
+            if (enemies[i].moves == 4) {
                 enemyShoot(i, enemies[i].px, enemies[i].py);  // Chama a função para o tiro
                 enemies[i].cooldown = 10;
                 enemies[i].moves = 0;  // Reseta
@@ -631,7 +683,7 @@ void moveEnemies() {
 }
 
 void spawnEnemies() {
-    if (difftime(time(NULL), lastEnemySpawn) < ENEMY_RESPAWN_INTERVAL) return;
+    if (difftime(time(NULL), lastEnemySpawn) < ENEMY_RESPAWN_INTERVAL || mapIndex == 2) return;
     int randomEnemy = rand() % 100;
 
     for (int i = 0; i < MAX_ENEMIES; i++) {
