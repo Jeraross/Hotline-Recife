@@ -342,7 +342,7 @@ void drawComboHUD() {
 void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
     screenGotoxy(player.x, player.y);
-    printf("@");
+    printf("ඞ");
     fflush(stdout);
 }
 
@@ -659,7 +659,7 @@ void moveEnemies() {
         if (nextX == player.x && nextY == player.y) {
             screenSetColor(RED, BLACK);
             screenGotoxy(player.x, player.y);
-            printf("@");
+            printf("ඞ");
             fflush(stdout);
             usleep(100000);  // Mantém o feedback vermelho por 100ms
             player.health--;
@@ -919,7 +919,7 @@ void enemyShoot(int enemyIndex, int plx, int ply) {
         if (x == player.x && y == player.y) {
             screenSetColor(RED, BLACK);
             screenGotoxy(player.x, player.y);
-            printf("@");
+            printf("ඞ");
             fflush(stdout);
             usleep(100000);  // Mantém o feedback vermelho por 100ms
             player.health--;
