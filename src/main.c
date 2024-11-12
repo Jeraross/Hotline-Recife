@@ -85,20 +85,20 @@ char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
         "#######################################################",
         "##                                                    #",
         "##                                                    #",
-        "##         #########                                  #",
-        "##         #                                          #",
-        "##         #                                          #",
-        "##         #                                          #",
+        "##         #########                        #         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
         "##                                                    #",
         "##                                                    #",
         "##                                                    #",
         "##                                                    #",
         "##                                                    #",
         "##                                                    #",
-        "##                                          #         #",
-        "##                                          #         #",
-        "##                                          #         #",
-        "##                                   ########         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
+        "##         #                         ########         #",
         "##                                                    #",
         "##                                                    #",
         "#######################################################"
@@ -186,6 +186,7 @@ void playerShotgunShoot(int dx, int dy);
 void handlePlayerHit();
 void enemyShoot(int enemyIndex, int plx, int ply);
 void reload();
+void bossShockwave();
 
 int main() {
     keyboardInit();
@@ -873,13 +874,13 @@ void moveBoss() {
         } else if (tanque.tick == 7) {
             tanque.cooldown = 5;
             tanque.tick = 0;
-            //tanque.move = 2;
+            tanque.move = 2;
         }
         tanque.tick += 1;
 
     } else if (tanque.move == 2) {
         tanque.cooldown = 5;
-        // Lógica adicional para o move 2
+        bossShockwave();
 
     } else if (tanque.move == 3) {
         tanque.cooldown = 5;
@@ -1173,5 +1174,57 @@ void reload() {
         player.ammo = MAX_AMMO;
         player.clips--;
         drawHUD();
+    }
+}
+
+void bossShockwave() {
+    int range = (MAP_WIDTH > MAP_HEIGHT) ? MAP_WIDTH : MAP_HEIGHT; // Define o alcance da onda
+    int startX = tanque.x;
+    int startY = tanque.y;
+
+
+
+    for (int r = 1; r < range; r++) {
+        // Expande ao redor do boss
+        for (int dx = -r; dx <= r; dx++) {
+            int x1 = startX + dx;
+            int y1 = startY + (r - abs(dx));
+            int y2 = startY - (r - abs(dx));
+
+            // Ignorar as coordenadas especificadas
+            if ((x1 >= 2 && x1 <= 10 || x1 >= 43 && x1 <= 54) && (y1 >= 4 && y1 <= 7 || y1 >= 14 && y1 <= 20)) {
+                continue;
+            }
+            if ((x1 >= 2 && x1 <= 10|| x1>=43 && x1<=54 )  && (y2 >= 4 && y2 <= 7 || y2 >= 14 && y2 <= 20)) {
+                continue;
+            }
+
+            // Verifica os limites do mapa antes de desenhar o shockwave
+            if (x1 >= 0 && x1 < MAP_WIDTH && y1 >= 0 && y1 < MAP_HEIGHT && maps[mapIndex][y1][x1] != '#') {
+                screenGotoxy(x1, y1);
+                screenSetColor(RED, BLACK);
+
+                printf("*"); // Símbolo do shockwave
+                fflush(stdout);
+                if (x1 == player.x && y1 == player.y) {
+                    handlePlayerHit();
+                }
+            }
+            if (x1 >= 0 && x1 < MAP_WIDTH && y2 >= 0 && y2 < MAP_HEIGHT && maps[mapIndex][y2][x1] != '#') {
+                screenGotoxy(x1, y2);
+                screenSetColor(RED, BLACK);
+                printf("*");
+                fflush(stdout);
+                if (x1 == player.x && y2 == player.y) {
+                    handlePlayerHit();
+                }
+            }
+        }
+        usleep(50000); // Atraso para o efeito de expansão
+        screenDrawMap(mapIndex);
+        drawPlayer();
+        drawEnemies();
+        drawDrops();
+        drawBoss(tanque.x, tanque.y);
     }
 }
