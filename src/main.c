@@ -63,18 +63,18 @@ char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
         "##                                                    #",
         "#######    ####    ####           ####    ####    #####",
         "##                                                    #",
-        "##         #########                ########          #",
-        "##         #                               #          #",
-        "##         #                               #          #",
-        "##         #                               #          #",
-        "##         #                               #          #",
+        "##         ########                  ########         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
         "##                                                    #",
         "##                                                    #",
-        "##         #                               #          #",
-        "##         #                               #          #",
-        "##         #                               #          #",
-        "##         #                               #          #",
-        "##         ########                 ########          #",
+        "##         #                                #         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
+        "##         #                                #         #",
+        "##         ########                  ########         #",
         "##                        #  #                        #",
         "##                       ##  ##                       #",
         "##                      ###  ###                      #", 
@@ -132,12 +132,22 @@ typedef struct {
     int alive;
     int cooldown;
     int type;
-    int moves;
+    int moves; // atirador
     int playerDetected;
     int px, py;
 } Enemy;
 
 Enemy enemies[MAX_ENEMIES] = { {10, 5, 1, 0, 0}, {8, 2, 1, 0, 0}, {15, 7, 1, 0, 0}, {30, 15, 1, 0, 0}, {35, 10, 1, 0, 0} };
+
+typedef struct {
+    int x, y; //core matriz
+    int health;
+    int cooldown;
+    int move;
+    int tick;
+} Boss;
+
+Boss tanque = {MAP_WIDTH / 2, MAP_HEIGHT / 2, 30, 0, 1, 0};
 
 time_t lastEnemySpawn;
 time_t lastDropSpawn;
@@ -157,6 +167,7 @@ void drawComboHUD();
 void drawPlayer();
 void drawGun();
 void drawEnemies();
+void drawBoss(int x, int y);
 void drawDrops();
 void drawDoor();
 int doorVerify();
@@ -165,11 +176,14 @@ void updateScore(int points, int isEnemyKill);
 int isOccupiedByEnemy(int x, int y);
 void movePlayer(int dx, int dy);
 void moveEnemies();
+void moveBoss();
+void bossShoot(int direction);
 void spawnEnemies();
 void showAttackFeedback();
 void playerAttack();
 void playerShoot(int dx, int dy);
 void playerShotgunShoot(int dx, int dy);
+void handlePlayerHit();
 void enemyShoot(int enemyIndex, int plx, int ply);
 void reload();
 
@@ -190,6 +204,9 @@ int main() {
     drawHUD();
     drawGun();
     drawDrops();
+    if (mapIndex == 2) {
+      drawBoss(tanque.x, tanque.y);
+    }
 
     lastEnemyMove = clock();
     lastEnemySpawn = time(NULL);
@@ -239,7 +256,7 @@ int main() {
             lastEnemyMove = clock();
         } else if (mapIndex == 2) {
             if (((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.5)) {
-                  //moveBoss();
+                  moveBoss();
                   lastEnemyMove = clock();
             }
             if (difftime(time(NULL), lastDropSpawn) >= 15) {
@@ -282,6 +299,9 @@ int main() {
             drawHUD();
             drawGun();
             drawDrops();
+            if (mapIndex == 2) {
+                drawBoss(tanque.x, tanque.y);
+            }
         }
     }
 }
@@ -372,6 +392,32 @@ void drawEnemies() {
             }
         }
     }
+    fflush(stdout);
+}
+
+void drawBoss(int x, int y) {
+    // Configuração de cor padrão do chefe
+    if (tanque.cooldown > 0) {
+        screenSetColor(COLOR_ENEMY_HIT, BLACK);
+    } else if (tanque.tick <= 2 && tanque.tick != 0) {
+        screenSetColor(RED, BLACK);
+    } else {
+        screenSetColor(COLOR_ENEMY, BLACK);
+    }
+
+    // Segunda linha da matriz do boss
+    screenGotoxy(x - 4, y - 1);
+    printf(" __( )===:");
+
+    // Terceira linha da matriz do boss
+    screenGotoxy(x - 4, y);
+    printf("/~~~~~~~\\");
+
+    // Quarta linha da matriz do boss
+    screenGotoxy(x - 4, y + 1);
+    printf("\\O.O.O.O/");
+
+    // Limpa o buffer para exibir imediatamente
     fflush(stdout);
 }
 
@@ -657,18 +703,7 @@ void moveEnemies() {
         int nextY = enemies[i].y + dy;
 
         if (nextX == player.x && nextY == player.y) {
-            screenSetColor(RED, BLACK);
-            screenGotoxy(player.x, player.y);
-            printf("ඞ");
-            fflush(stdout);
-            usleep(100000);  // Mantém o feedback vermelho por 100ms
-            player.health--;
-            enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
-            drawHUD();
-            if (player.health <= 0) {
-                printf("Game Over!\n");
-                exit(0);
-            }
+            handlePlayerHit();
             continue;
         }
 
@@ -680,6 +715,182 @@ void moveEnemies() {
         }
     }
     drawEnemies();
+}
+
+void bossShoot(int direction) {
+    int startX = tanque.x;
+    int startY = tanque.y;
+    int range = 30;
+    char shotChar;
+
+    // Configuração de cor para o tiro
+    screenSetColor(RED, BLACK);
+
+    // Disparo nas quatro direções conforme o tipo
+    for (int i = 1; i <= range; i++) {
+        // Tiros horizontais e verticais
+        if (direction == 1) {
+            // Direita
+            int xRight = startX + i;
+            if (xRight >= 0 && xRight < MAP_WIDTH && maps[mapIndex][startY][xRight] != '#') {
+                screenGotoxy(xRight, startY);
+                printf("-");
+                fflush(stdout);
+                if (xRight == player.x && startY == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+
+            // Esquerda
+            int xLeft = startX - i;
+            if (xLeft >= 0 && xLeft < MAP_WIDTH && maps[mapIndex][startY][xLeft] != '#') {
+                screenGotoxy(xLeft, startY);
+                printf("-");
+                fflush(stdout);
+                if (xLeft == player.x && startY == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+
+            // Cima
+            int yUp = startY - i;
+            if (yUp >= 0 && yUp < MAP_HEIGHT && maps[mapIndex][yUp][startX] != '#') {
+                screenGotoxy(startX, yUp);
+                printf("|");
+                fflush(stdout);
+                if (startX == player.x && yUp == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+
+            // Baixo
+            int yDown = startY + i;
+            if (yDown >= 0 && yDown < MAP_HEIGHT && maps[mapIndex][yDown][startX] != '#') {
+                screenGotoxy(startX, yDown);
+                printf("|");
+                fflush(stdout);
+                if (startX == player.x && yDown == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+        }
+
+        // Tiros diagonais
+        else if (direction == 2) {
+            // Diagonal principal (\)
+            int xRightDown = startX + i;
+            int yRightDown = startY + i;
+            if (xRightDown >= 0 && xRightDown < MAP_WIDTH && yRightDown >= 0 && yRightDown < MAP_HEIGHT && maps[mapIndex][yRightDown][xRightDown] != '#') {
+                screenGotoxy(xRightDown, yRightDown);
+                printf("\\");
+                fflush(stdout);
+                if (xRightDown == player.x && yRightDown == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+
+            int xLeftUp = startX - i;
+            int yLeftUp = startY - i;
+            if (xLeftUp >= 0 && xLeftUp < MAP_WIDTH && yLeftUp >= 0 && yLeftUp < MAP_HEIGHT && maps[mapIndex][yLeftUp][xLeftUp] != '#') {
+                screenGotoxy(xLeftUp, yLeftUp);
+                printf("\\");
+                fflush(stdout);
+                if (xLeftUp == player.x && yLeftUp == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+
+            // Diagonal secundária (/)
+            int xRightUp = startX + i;
+            int yRightUp = startY - i;
+            if (xRightUp >= 0 && xRightUp < MAP_WIDTH && yRightUp >= 0 && yRightUp < MAP_HEIGHT && maps[mapIndex][yRightUp][xRightUp] != '#') {
+                screenGotoxy(xRightUp, yRightUp);
+                printf("/");
+                fflush(stdout);
+                if (xRightUp == player.x && yRightUp == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+
+            int xLeftDown = startX - i;
+            int yLeftDown = startY + i;
+            if (xLeftDown >= 0 && xLeftDown < MAP_WIDTH && yLeftDown >= 0 && yLeftDown < MAP_HEIGHT && maps[mapIndex][yLeftDown][xLeftDown] != '#') {
+                screenGotoxy(xLeftDown, yLeftDown);
+                printf("/");
+                fflush(stdout);
+                if (xLeftDown == player.x && yLeftDown == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+        }
+
+        usleep(5000);  // Pequeno atraso entre cada tiro
+    }
+
+    // Redesenha o mapa após o disparo
+    screenDrawMap(mapIndex);
+    drawPlayer();
+    drawEnemies();
+    drawDrops();
+    drawBoss(tanque.x, tanque.y);
+}
+
+
+// Função para gerenciar o impacto do tiro no jogador
+void handlePlayerHit() {
+    screenSetColor(RED, BLACK);
+    screenGotoxy(player.x, player.y);
+    printf("ඞ");
+    fflush(stdout);
+    usleep(100000);
+    player.health--;
+    drawHUD();
+    if (player.health <= 0) {
+        printf("Game Over!\n");
+        exit(0);
+    }
+}
+
+void moveBoss() {
+    if (tanque.cooldown > 0) {
+        tanque.cooldown--;
+        return;
+    }
+
+    if (tanque.move == 1) {
+        if (tanque.tick == 3 || tanque.tick == 5) {
+            bossShoot(1);  // Disparo nas horizontais e verticais
+        } else if (tanque.tick == 4 || tanque.tick == 6) {
+            bossShoot(2);  // Disparo nas diagonais
+        } else if (tanque.tick == 7) {
+            tanque.cooldown = 5;
+            tanque.tick = 0;
+            //tanque.move = 2;
+        }
+        tanque.tick += 1;
+
+    } else if (tanque.move == 2) {
+        tanque.cooldown = 5;
+        // Lógica adicional para o move 2
+
+    } else if (tanque.move == 3) {
+        tanque.cooldown = 5;
+        // Lógica adicional para o move 3
+
+    } else if (tanque.move == 4) {
+        tanque.cooldown = 5;
+        tanque.move = 1;
+    }
+
+    drawBoss(tanque.x, tanque.y);
 }
 
 void spawnEnemies() {
@@ -760,6 +971,9 @@ void playerAttack() {
     drawEnemies();
     drawGun();
     drawDrops();
+    if (mapIndex == 2) {
+        drawBoss(tanque.x, tanque.y);
+    }
 }
 
 void playerShoot(int dx, int dy) {
@@ -818,6 +1032,9 @@ void playerShoot(int dx, int dy) {
     drawPlayer();
     drawEnemies();
     drawDrops();
+    if (mapIndex == 2) {
+        drawBoss(tanque.x, tanque.y);
+    }
 }
 
 void playerShotgunShoot(int dx, int dy) {
@@ -883,6 +1100,9 @@ void playerShotgunShoot(int dx, int dy) {
     drawPlayer();
     drawEnemies();
     drawDrops();
+    if (mapIndex == 2) {
+        drawBoss(tanque.x, tanque.y);
+    }
 }
 
 void enemyShoot(int enemyIndex, int plx, int ply) {
@@ -943,6 +1163,9 @@ void enemyShoot(int enemyIndex, int plx, int ply) {
     drawPlayer();
     drawEnemies();
     drawDrops();
+    if (mapIndex == 2) {
+        drawBoss(tanque.x, tanque.y);
+    }
 }
 
 void reload() {
