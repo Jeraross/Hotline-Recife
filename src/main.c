@@ -341,15 +341,15 @@ void drawBoss(int x, int y) {
         screenSetColor(COLOR_ENEMY, BLACK);
     }
 
-    // Segunda linha da matriz do boss
+    // primeira linha da matriz do boss
     screenGotoxy(x - 4, y - 1);
     printf(" __( )===:");
 
-    // Terceira linha da matriz do boss
+    // segunda linha da matriz do boss
     screenGotoxy(x - 4, y);
     printf("/~~~X~~~\\");
 
-    // Quarta linha da matriz do boss
+    // terceira linha da matriz do boss
     screenGotoxy(x - 4, y + 1);
     printf("\\O.O.O.O/");
 
