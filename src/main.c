@@ -1084,7 +1084,7 @@ void spawnEnemies() {
 void showAttackFeedback() {
     screenSetColor(COLOR_ATTACK, BLACK);
     for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
+        for (int dx = -1; dx <= 2; dx++) {
             if (dx == 0 && dy == 0) continue;
 
             int x = player.x + dx;
@@ -1103,7 +1103,7 @@ void playerAttack() {
 
     if (mapIndex == 2) {
         // Verifica se o ataque atingiu a área do Boss Tanque
-        if (abs(tanque.x - player.x) <= 1 && abs(tanque.y - player.y) <= 1) {
+        if (abs(tanque.x - player.x) <= 2 && abs(tanque.y - player.y) <= 1) {
             // Verifica se o jogador está dentro da área do tanque
             if (player.x >= tanque.x - bossWidth / 2 && player.x <= tanque.x + bossWidth / 2 &&
                 player.y >= tanque.y - bossHeight / 2 && player.y <= tanque.y + bossHeight / 2) {
@@ -1119,7 +1119,7 @@ void playerAttack() {
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) continue;
 
-        if (abs(enemies[i].x - player.x) <= 1 && abs(enemies[i].y - player.y) <= 1) {
+        if (abs(enemies[i].x - player.x) <= 2 && abs(enemies[i].y - player.y) <= 1) {
             screenGotoxy(enemies[i].x, enemies[i].y);
             printf(" ");
             enemies[i].alive = 0;
