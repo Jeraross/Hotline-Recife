@@ -288,11 +288,11 @@ void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
     screenGotoxy(player.x, player.y);
    if (player.mask == 0) 
-    printf("C");  // Representação do  com "C"
+    printf("🐔");  // Representação do  com "C"
 else if (player.mask == 1) 
-    printf("L");  // Representação do  com "L"
+    printf("🦁");  // Representação do  com "L"
 else if (player.mask == 2) 
-    printf("F");  // Representação do  com "F"
+    printf("🐭");  // Representação do  com "F"
     fflush(stdout);
 }
 
@@ -391,7 +391,7 @@ void drawDoor() {
 }
 
 int doorVerify() {
-    if (enemies_dead >= 10 && player.x == porta_x && player.y == porta_y) {
+    if (enemies_dead >= 10 && (player.x == porta_x || player.x + 1 == porta_x) && player.y == porta_y) {
         mapIndex++;
         enemies_dead = 0;
         if (mapIndex >= NUM_MAPS) {
@@ -470,14 +470,14 @@ void movePlayer(int dx, int dy) {
     int newX = player.x + dx;
     int newY = player.y + dy;
 
-    if (maps[mapIndex][newY][newX] != '#' && !isOccupiedByEnemy(newX, newY)) {
+    if (maps[mapIndex][newY][newX] != '#' && !isOccupiedByEnemy(newX, newY) && maps[mapIndex][newY][newX + 1] != '#' && !isOccupiedByEnemy(newX + 1, newY)) {
         screenGotoxy(player.x, player.y);
         printf(" ");
 
         player.x = newX;
         player.y = newY;
 
-        if (mapIndex==0 &&player.x == 53 && player.y == 3) { // Verificando a coleta da arma
+        if (mapIndex==0 && (player.x == 53 || player.x == 52) && player.y == 3) { // Verificando a coleta da arma
             player.hasWeapon = 1;
             player.currentWeapon = 0;
             player.ammo = MAX_AMMO;
@@ -485,7 +485,7 @@ void movePlayer(int dx, int dy) {
             printf(" ");
         }
 
-        if (mapIndex==1 &&player.x == 28 && player.y == 10) { // Verificando a coleta da arma
+        if (mapIndex==1 && (player.x == 28 || player.x == 27) && player.y == 10) { // Verificando a coleta da arma
             player.hasShotgun = 1;
             player.currentWeapon = 1;
             player.ammo = MAX_AMMO;
@@ -494,7 +494,7 @@ void movePlayer(int dx, int dy) {
         }
 
         for (int i = 0; i < MAX_ENEMIES; i++) {
-            if (drops[i].active && drops[i].x == player.x && drops[i].y == player.y) {
+            if (drops[i].active && (drops[i].x == player.x || drops[i].x == player.x + 1) && drops[i].y == player.y) {
                 if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
                     player.clips++;
                 } else if (drops[i].type == 2 && player.health < PLAYER_MAX_HEALTH) {
@@ -632,7 +632,7 @@ void moveEnemies() {
         int nextX = enemies[i].x + dx;
         int nextY = enemies[i].y + dy;
 
-        if (nextX == player.x && nextY == player.y) {
+        if ((nextX == player.x || nextX == player.x + 1) && nextY == player.y) {
             handlePlayerHit();
             continue;
         }
@@ -666,7 +666,7 @@ void bossShoot(int direction) {
                 screenGotoxy(xRight, startY);
                 printf("-");
                 fflush(stdout);
-                if (xRight == player.x && startY == player.y) {
+                if ((xRight == player.x || xRight == player.x + 1) && startY == player.y) {
                     handlePlayerHit();
                     break;
                 }
@@ -678,7 +678,7 @@ void bossShoot(int direction) {
                 screenGotoxy(xLeft, startY);
                 printf("-");
                 fflush(stdout);
-                if (xLeft == player.x && startY == player.y) {
+                if ((xLeft == player.x || xLeft == player.x + 1) && startY == player.y) {
                     handlePlayerHit();
                     break;
                 }
@@ -690,7 +690,7 @@ void bossShoot(int direction) {
                 screenGotoxy(startX, yUp);
                 printf("|");
                 fflush(stdout);
-                if (startX == player.x && yUp == player.y) {
+                if ((startX == player.x || startX == player.x + 1) && yUp == player.y) {
                     handlePlayerHit();
                     break;
                 }
@@ -702,7 +702,7 @@ void bossShoot(int direction) {
                 screenGotoxy(startX, yDown);
                 printf("|");
                 fflush(stdout);
-                if (startX == player.x && yDown == player.y) {
+                if ((startX == player.x || startX == player.x + 1) && yDown == player.y) {
                     handlePlayerHit();
                     break;
                 }
@@ -718,7 +718,7 @@ void bossShoot(int direction) {
                 screenGotoxy(xRightDown, yRightDown);
                 printf("\\");
                 fflush(stdout);
-                if (xRightDown == player.x && yRightDown == player.y) {
+                if ((xRightDown == player.x || xRightDown == player.x + 1) && yRightDown == player.y) {
                     handlePlayerHit();
                     break;
                 }
@@ -730,7 +730,7 @@ void bossShoot(int direction) {
                 screenGotoxy(xLeftUp, yLeftUp);
                 printf("\\");
                 fflush(stdout);
-                if (xLeftUp == player.x && yLeftUp == player.y) {
+                if ((xLeftUp == player.x || xLeftUp == player.x + 1) && yLeftUp == player.y) {
                     handlePlayerHit();
                     break;
                 }
@@ -743,7 +743,7 @@ void bossShoot(int direction) {
                 screenGotoxy(xRightUp, yRightUp);
                 printf("/");
                 fflush(stdout);
-                if (xRightUp == player.x && yRightUp == player.y) {
+                if ((xRightUp == player.x || xRightUp == player.x + 1) && yRightUp == player.y) {
                     handlePlayerHit();
                     break;
                 }
@@ -755,7 +755,7 @@ void bossShoot(int direction) {
                 screenGotoxy(xLeftDown, yLeftDown);
                 printf("/");
                 fflush(stdout);
-                if (xLeftDown == player.x && yLeftDown == player.y) {
+                if ((xLeftDown == player.x || xLeftDown == player.x + 1) && yLeftDown == player.y) {
                     handlePlayerHit();
                     break;
                 }
@@ -818,19 +818,19 @@ void tripleBossShoot(int direction) {
                     screenGotoxy(x1, y1a);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x1 == player.x && y1a == player.y) { handlePlayerHit(); break; }
+                    if ((x1 == player.x || x1 == player.x + 1) && y1a == player.y) { handlePlayerHit(); break; }
                 }
                 if (startX >= 0 && startX < MAP_WIDTH && maps[mapIndex][y1a][startX] != '#') {
                     screenGotoxy(startX, y1a);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (startX == player.x && y1a == player.y) { handlePlayerHit(); break; }
+                    if ((startX == player.x || startX == player.x + 1) && y1a == player.y) { handlePlayerHit(); break; }
                 }
                 if (x2 >= 0 && x2 < MAP_WIDTH && maps[mapIndex][y1a][x2] != '#') {
                     screenGotoxy(x2, y1a);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x2 == player.x && y1a == player.y) { handlePlayerHit(); break; }
+                    if ((x2 == player.x || x2 == player.x + 1) && y1a == player.y) { handlePlayerHit(); break; }
                 }
             }
 
@@ -840,19 +840,19 @@ void tripleBossShoot(int direction) {
                     screenGotoxy(x1, y1c);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x1 == player.x && y1c == player.y) { handlePlayerHit(); break; }
+                    if ((x1 == player.x || x1 == player.x + 1) && y1c == player.y) { handlePlayerHit(); break; }
                 }
                 if (startX >= 0 && startX < MAP_WIDTH && maps[mapIndex][y1c][startX] != '#') {
                     screenGotoxy(startX, y1c);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (startX == player.x && y1c == player.y) { handlePlayerHit(); break; }
+                    if ((startX == player.x || startX == player.x + 1) && y1c == player.y) { handlePlayerHit(); break; }
                 }
                 if (x2 >= 0 && x2 < MAP_WIDTH && maps[mapIndex][y1c][x2] != '#') {
                     screenGotoxy(x2, y1c);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x2 == player.x && y1c == player.y) { handlePlayerHit(); break; }
+                    if ((x2 == player.x || x2 == player.x + 1) && y1c == player.y) { handlePlayerHit(); break; }
                 }
             }
 
@@ -876,19 +876,19 @@ void tripleBossShoot(int direction) {
                     screenGotoxy(x1, y1a);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x1 == player.x && y1a == player.y) { handlePlayerHit(); break; }
+                    if ((x1 == player.x || x1 == player.x + 1) && y1a == player.y) { handlePlayerHit(); break; }
                 }
                 if (y1b >= 0 && y1b < MAP_HEIGHT && maps[mapIndex][y1b][x1] != '#') {
                     screenGotoxy(x1, y1b);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x1 == player.x && y1b == player.y) { handlePlayerHit(); break; }
+                    if ((x1 == player.x || x1 == player.x + 1) && y1b == player.y) { handlePlayerHit(); break; }
                 }
                 if (y1c >= 0 && y1c < MAP_HEIGHT && maps[mapIndex][y1c][x1] != '#') {
                     screenGotoxy(x1, y1c);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x1 == player.x && y1c == player.y) { handlePlayerHit(); break; }
+                    if ((x1 == player.x || x1 == player.x + 1) && y1c == player.y) { handlePlayerHit(); break; }
                 }
             }
 
@@ -898,19 +898,19 @@ void tripleBossShoot(int direction) {
                     screenGotoxy(x2, y2a);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x2 == player.x && y2a == player.y) { handlePlayerHit(); break; }
+                    if ((x2 == player.x || x2 == player.x + 1) && y2a == player.y) { handlePlayerHit(); break; }
                 }
                 if (y2b >= 0 && y2b < MAP_HEIGHT && maps[mapIndex][y2b][x2] != '#') {
                     screenGotoxy(x2, y2b);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x2 == player.x && y2b == player.y) { handlePlayerHit(); break; }
+                    if ((x2 == player.x || x2 == player.x + 1) && y2b == player.y) { handlePlayerHit(); break; }
                 }
                 if (y2c >= 0 && y2c < MAP_HEIGHT && maps[mapIndex][y2c][x2] != '#') {
                     screenGotoxy(x2, y2c);
                     printf("%c", bulletChar);
                     fflush(stdout);
-                    if (x2 == player.x && y2c == player.y) { handlePlayerHit(); break; }
+                    if ((x2 == player.x || x2 == player.x + 1) && y2c == player.y) { handlePlayerHit(); break; }
                 }
             }
 
@@ -932,9 +932,10 @@ void tripleBossShoot(int direction) {
 void handlePlayerHit() {
     screenSetColor(RED, BLACK);
     screenGotoxy(player.x, player.y);
-    printf("ඞ");
+    printf("░░");
     fflush(stdout);
     usleep(100000);
+    drawPlayer();
     player.health--;
     drawHUD();
     if (player.health <= 0) {
@@ -1121,7 +1122,7 @@ void playerAttack() {
 void playerShoot(int dx, int dy) {
     if (!player.hasWeapon || player.ammo <= 0) return;
 
-    int x = player.x + dx;
+    int x = (dx == 1 && dy == 0) ? 1 + player.x + dx : player.x + dx;
     int y = player.y + dy;
     int range = 10;
 
@@ -1197,7 +1198,7 @@ void playerShoot(int dx, int dy) {
 void playerShotgunShoot(int dx, int dy) {
     if (!player.hasShotgun || player.ammo <= 0) return;
 
-    int startX = player.x + dx;
+    int startX = (dx == 1 && dy == 0) ? 1 + player.x + dx : player.x + dx;
     int startY = player.y + dy;
     int range = 5;  // Alcance fixo da shotgun
 
@@ -1231,7 +1232,7 @@ void playerShotgunShoot(int dx, int dy) {
                     tanque.health = 0;
                     // Ação quando o Boss Tanque morre
                 }
-                continue;
+                break;
             }
 
             // Checa se o tiro atingiu algum inimigo
@@ -1312,18 +1313,8 @@ void enemyShoot(int enemyIndex, int plx, int ply) {
         fflush(stdout);
         usleep(25000);
 
-        if (x == player.x && y == player.y) {
-            screenSetColor(RED, BLACK);
-            screenGotoxy(player.x, player.y);
-            printf("ඞ");
-            fflush(stdout);
-            usleep(100000);  // Mantém o feedback vermelho por 100ms
-            player.health--;
-            drawHUD();
-            if (player.health <= 0) {
-                printf("Game Over!\n");
-                exit(0);
-            }
+        if ((x == player.x || x == player.x + 1) && y == player.y) {
+            handlePlayerHit();
             break;  // O tiro atinge o jogador, então interrompe o loop
         }
 
@@ -1382,7 +1373,7 @@ void bossShockwave() {
 
                 printf("*"); // Símbolo do shockwave
                 fflush(stdout);
-                if (x1 == player.x && y1 == player.y) {
+                if ((x1 == player.x || x1 == player.x) && y1 == player.y) {
                     handlePlayerHit();
                 }
             }
@@ -1391,7 +1382,7 @@ void bossShockwave() {
                 screenSetColor(RED, BLACK);
                 printf("*");
                 fflush(stdout);
-                if (x1 == player.x && y2 == player.y) {
+                if ((x1 == player.x || x1 == player.x) && y2 == player.y) {
                     handlePlayerHit();
                 }
             }
