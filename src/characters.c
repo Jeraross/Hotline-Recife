@@ -172,6 +172,8 @@ int navigate_masks() {
 
         usleep(100000); // Espera um pouco para evitar sobrecarga de CPU
     }
+    screenDestroy();
+    screenHideCursor();
 
     return current_mask;  // Retorna a máscara escolhida
 }
