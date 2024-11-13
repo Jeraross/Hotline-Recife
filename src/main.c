@@ -111,6 +111,7 @@ void movePlayer(int dx, int dy);
 void moveEnemies();
 void moveBoss();
 void bossShoot(int direction);
+void tripleBossShoot(int direction);
 void spawnEnemies();
 void showAttackFeedback();
 void playerAttack();
@@ -246,8 +247,6 @@ int main() {
         }
     }
 }
-
-
 void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
     screenSetColor(WHITE, BLACK);
@@ -284,10 +283,9 @@ void drawPlayer() {
    if (player.mask == 0) 
     printf("🐔");  // Representação do "🐔" com "C"
 else if (player.mask == 1) 
-    printf("L");  // Representação do "🦁" com "L"
+    printf("");  // Representação do "🦁" com "L"
 else if (player.mask == 2) 
     printf("F");  // Representação do "🦊" com "F"
-
     fflush(stdout);
 }
 
@@ -336,7 +334,7 @@ void drawBoss(int x, int y) {
 
     // Terceira linha da matriz do boss
     screenGotoxy(x - 4, y);
-    printf("/~~~~~~~\\");
+    printf("/~~~X~~~\\");
 
     // Quarta linha da matriz do boss
     screenGotoxy(x - 4, y + 1);
@@ -768,6 +766,160 @@ void bossShoot(int direction) {
     drawBoss(tanque.x, tanque.y);
 }
 
+void tripleBossShoot(int direction) {
+    int startX = tanque.x;
+    int startY = tanque.y;
+    int range = 30;
+    int dx1 = 0, dy1 = 0, dx2 = 0, dy2 = 0;
+    char bulletChar;
+
+    // Configuração das direções e caracteres dos tiros
+    switch (direction) {
+        case 1:  // Horizontal (esquerda e direita)
+            dx1 = 1; dy1 = 0; bulletChar = '-';
+            dx2 = -1; dy2 = 0;
+            break;
+        case 2:  // Vertical (cima e baixo)
+            dx1 = 0; dy1 = 1; bulletChar = '|';
+            dx2 = 0; dy2 = -1;
+            break;
+        case 3:  // Diagonal principal (\)
+            dx1 = 1; dy1 = 1; bulletChar = '\\';
+            dx2 = -1; dy2 = -1;
+            break;
+        case 4:  // Diagonal secundária (/)
+            dx1 = 1; dy1 = -1; bulletChar = '/';
+            dx2 = -1; dy2 = 1;
+            break;
+    }
+
+    screenSetColor(RED, BLACK);  // Configuração de cor para o tiro
+
+    if (direction == 2) {
+        for (int i = 1; i <= range; i++) {
+            int y1a = startY + i * dy1;  // Primeiro tiro na direção dy1 (baixo)
+            int y1b = startY;            // Tiro central
+            int y1c = startY - i * dy1;  // Primeiro tiro na direção oposta (cima)
+
+            int x1 = startX - 1;         // Tiro na posição x da esquerda do tanque
+            int x2 = startX + 1;         // Tiro na posição x da direita do tanque
+
+            // Desenho e verificação de limites para tiros na primeira direção (baixo)
+            if (y1a >= 0 && y1a < MAP_HEIGHT) {
+                if (x1 >= 0 && x1 < MAP_WIDTH && maps[mapIndex][y1a][x1] != '#') {
+                    screenGotoxy(x1, y1a);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x1 == player.x && y1a == player.y) { handlePlayerHit(); break; }
+                }
+                if (startX >= 0 && startX < MAP_WIDTH && maps[mapIndex][y1a][startX] != '#') {
+                    screenGotoxy(startX, y1a);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (startX == player.x && y1a == player.y) { handlePlayerHit(); break; }
+                }
+                if (x2 >= 0 && x2 < MAP_WIDTH && maps[mapIndex][y1a][x2] != '#') {
+                    screenGotoxy(x2, y1a);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x2 == player.x && y1a == player.y) { handlePlayerHit(); break; }
+                }
+            }
+
+            // Desenho e verificação de limites para tiros na direção oposta (cima)
+            if (y1c >= 0 && y1c < MAP_HEIGHT) {
+                if (x1 >= 0 && x1 < MAP_WIDTH && maps[mapIndex][y1c][x1] != '#') {
+                    screenGotoxy(x1, y1c);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x1 == player.x && y1c == player.y) { handlePlayerHit(); break; }
+                }
+                if (startX >= 0 && startX < MAP_WIDTH && maps[mapIndex][y1c][startX] != '#') {
+                    screenGotoxy(startX, y1c);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (startX == player.x && y1c == player.y) { handlePlayerHit(); break; }
+                }
+                if (x2 >= 0 && x2 < MAP_WIDTH && maps[mapIndex][y1c][x2] != '#') {
+                    screenGotoxy(x2, y1c);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x2 == player.x && y1c == player.y) { handlePlayerHit(); break; }
+                }
+            }
+
+            usleep(5000);  // Pequeno atraso entre cada tiro
+        }
+    } else {
+          for (int i = 1; i <= range; i++) {
+            int x1 = startX + i * dx1;
+            int y1a = startY - 1 + i * dy1;
+            int y1b = startY + i * dy1;
+            int y1c = startY + 1 + i * dy1;
+
+            int x2 = startX + i * dx2;
+            int y2a = startY - 1 + i * dy2;
+            int y2b = startY + i * dy2;
+            int y2c = startY + 1 + i * dy2;
+
+            // Desenho e verificação de limites para tiros na primeira direção
+            if (x1 >= 0 && x1 < MAP_WIDTH) {
+                if (y1a >= 0 && y1a < MAP_HEIGHT && maps[mapIndex][y1a][x1] != '#') {
+                    screenGotoxy(x1, y1a);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x1 == player.x && y1a == player.y) { handlePlayerHit(); break; }
+                }
+                if (y1b >= 0 && y1b < MAP_HEIGHT && maps[mapIndex][y1b][x1] != '#') {
+                    screenGotoxy(x1, y1b);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x1 == player.x && y1b == player.y) { handlePlayerHit(); break; }
+                }
+                if (y1c >= 0 && y1c < MAP_HEIGHT && maps[mapIndex][y1c][x1] != '#') {
+                    screenGotoxy(x1, y1c);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x1 == player.x && y1c == player.y) { handlePlayerHit(); break; }
+                }
+            }
+
+            // Desenho e verificação de limites para tiros na direção oposta
+            if (x2 >= 0 && x2 < MAP_WIDTH) {
+                if (y2a >= 0 && y2a < MAP_HEIGHT && maps[mapIndex][y2a][x2] != '#') {
+                    screenGotoxy(x2, y2a);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x2 == player.x && y2a == player.y) { handlePlayerHit(); break; }
+                }
+                if (y2b >= 0 && y2b < MAP_HEIGHT && maps[mapIndex][y2b][x2] != '#') {
+                    screenGotoxy(x2, y2b);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x2 == player.x && y2b == player.y) { handlePlayerHit(); break; }
+                }
+                if (y2c >= 0 && y2c < MAP_HEIGHT && maps[mapIndex][y2c][x2] != '#') {
+                    screenGotoxy(x2, y2c);
+                    printf("%c", bulletChar);
+                    fflush(stdout);
+                    if (x2 == player.x && y2c == player.y) { handlePlayerHit(); break; }
+                }
+            }
+
+            usleep(5000);  // Pequeno atraso entre cada tiro
+        }
+    }
+
+
+    // Redesenha o mapa após o disparo
+    screenDrawMap(mapIndex);
+    drawPlayer();
+    drawEnemies();
+    drawDrops();
+    drawBoss(tanque.x, tanque.y);
+}
+
+
 
 // Função para gerenciar o impacto do tiro no jogador
 void handlePlayerHit() {
@@ -791,11 +943,11 @@ void moveBoss() {
     }
 
     if (tanque.move == 1) {
-        if (tanque.tick == 3 || tanque.tick == 5) {
+        if (tanque.tick == 3 || tanque.tick == 5 || tanque.tick == 7) {
             bossShoot(1);  // Disparo nas horizontais e verticais
-        } else if (tanque.tick == 4 || tanque.tick == 6) {
+        } else if (tanque.tick == 4 || tanque.tick == 6 || tanque.tick == 8) {
             bossShoot(2);  // Disparo nas diagonais
-        } else if (tanque.tick == 7) {
+        } else if (tanque.tick == 9) {
             tanque.cooldown = 5;
             tanque.tick = 0;
             tanque.move = 2;
@@ -803,16 +955,33 @@ void moveBoss() {
         tanque.tick += 1;
 
     } else if (tanque.move == 2) {
-        tanque.cooldown = 5;
-        bossShockwave();
+        if (tanque.tick == 3 ) {
+            bossShockwave();
+        } else if (tanque.tick == 4) {
+            tanque.cooldown = 5;
+            tanque.tick = 0;
+            tanque.move = 3;
+        }
+        tanque.tick += 1;
 
     } else if (tanque.move == 3) {
-        tanque.cooldown = 5;
-        // Lógica adicional para o move 3
+        if (tanque.tick == 3 || tanque.tick == 7 || tanque.tick == 11) {
+            tripleBossShoot(1);  // Disparo nas horizontais
+        } else if (tanque.tick == 4 || tanque.tick == 8) {
+            tripleBossShoot(3);  // Disparo nas diagonais
+        } else if (tanque.tick == 5 || tanque.tick == 9) {
+            tripleBossShoot(2);  // Disparo nas horizontais
+        } else if (tanque.tick == 6 || tanque.tick == 10) {
+            tripleBossShoot(4);  // Disparo nas diagonais
+        } else if (tanque.tick == 12) {
+            tanque.cooldown = 5;
+            tanque.tick = 0;
+            tanque.move = 4;
+        }
+        tanque.tick += 1;
 
     } else if (tanque.move == 4) {
-        tanque.cooldown = 5;
-        tanque.move = 1;
+
     }
 
     drawBoss(tanque.x, tanque.y);
