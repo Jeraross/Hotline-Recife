@@ -288,11 +288,11 @@ void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
     screenGotoxy(player.x, player.y);
    if (player.mask == 0) 
-    printf("🐔");  // Representação do "🐔" com "C"
+    printf("C");  // Representação do  com "C"
 else if (player.mask == 1) 
-    printf("");  // Representação do "🦁" com "L"
+    printf("L");  // Representação do  com "L"
 else if (player.mask == 2) 
-    printf("F");  // Representação do "🦊" com "F"
+    printf("F");  // Representação do  com "F"
     fflush(stdout);
 }
 
