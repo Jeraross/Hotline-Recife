@@ -1057,7 +1057,7 @@ void spawnEnemies() {
             do {
                 spawnX = rand() % MAP_WIDTH;
                 spawnY = rand() % MAP_HEIGHT;
-            } while (isOccupiedByEnemy(spawnX, spawnY) || abs(spawnX - player.x) < 5 || abs(spawnY - player.y) < 5 || maps[mapIndex][spawnY][spawnX] == '#');
+            } while (isOccupiedByEnemy(spawnX, spawnY) || abs(spawnX - player.x) < 5 || abs(spawnY - player.y) < 5 || maps[mapIndex][spawnY][spawnX] == '#' || spawnX == porta_x && spawnY == porta_y);
 
             enemies[i].x = spawnX;
             enemies[i].y = spawnY;
