@@ -19,6 +19,9 @@
 #define DROP_CHANCE 20
 #define COMBO_HUD_X 0
 #define COMBO_HUD_Y MAP_HEIGHT + 1
+#define BOSS_HEALTH_BAR_LENGTH 50  // Comprimento da barra de vida do chefe (ajuste conforme o design desejado)
+#define BOSS_HEALTH_BAR_X 0
+#define BOSS_HEALTH_BAR_Y MAP_HEIGHT + 2
 
 #define COLOR_WALL YELLOW
 #define COLOR_FLOOR LIGHTGRAY
@@ -125,7 +128,7 @@ typedef struct {
 } Player;
 
 
-Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 5, 2}; // Inicializando o jogador
+Player player = {2, 2, PLAYER_MAX_HEALTH, 0, 0, 5, 2}; // Inicializando o jogador
 
 typedef struct {
     int x, y;
@@ -147,7 +150,7 @@ typedef struct {
     int tick;
 } Boss;
 
-Boss tanque = {MAP_WIDTH / 2, MAP_HEIGHT / 2, 30, 0, 1, 0};
+Boss tanque = {MAP_WIDTH / 2, MAP_HEIGHT / 2, 50, 0, 1, 0};
 
 time_t lastEnemySpawn;
 time_t lastDropSpawn;
@@ -157,6 +160,8 @@ clock_t lastEnemyMove;
 int score = 0, combo = 1, pontosGanhos = 0, px = 0, py = 0, enemies_dead;
 int comboColors[] = {COLOR_COMBO1, COLOR_COMBO2, COLOR_COMBO3};
 int comboColorIndex = 0;
+int bossWidth = 9; // Largura do tanque
+int bossHeight = 3; // Altura do tanque
 
 int porta_x, porta_y;
 int mapIndex;
@@ -178,6 +183,7 @@ void updateScore(int points, int isEnemyKill);
 int isOccupiedByEnemy(int x, int y);
 void movePlayer(int dx, int dy);
 void moveEnemies();
+void drawBossHealthBar();
 void moveBoss();
 void bossShoot(int direction);
 void tripleBossShoot(int direction);
@@ -309,6 +315,7 @@ int main() {
             drawDrops();
             if (mapIndex == 2) {
                 drawBoss(tanque.x, tanque.y);
+                drawBossHealthBar();
             }
         }
     }
@@ -956,6 +963,7 @@ void bossShoot(int direction) {
     drawEnemies();
     drawDrops();
     drawBoss(tanque.x, tanque.y);
+    drawBossHealthBar();
 }
 
 void tripleBossShoot(int direction) {
@@ -1109,9 +1117,8 @@ void tripleBossShoot(int direction) {
     drawEnemies();
     drawDrops();
     drawBoss(tanque.x, tanque.y);
+    drawBossHealthBar();
 }
-
-
 
 // Função para gerenciar o impacto do tiro no jogador
 void handlePlayerHit() {
@@ -1126,6 +1133,32 @@ void handlePlayerHit() {
         printf("Game Over!\n");
         exit(0);
     }
+}
+
+void drawBossHealthBar() {
+    int healthSegments = (tanque.health * BOSS_HEALTH_BAR_LENGTH) / 50; // 50 é a nova vida máxima do tanque
+    screenGotoxy(BOSS_HEALTH_BAR_X, BOSS_HEALTH_BAR_Y);
+
+    // Escolhe a cor da barra com base na saúde do tanque
+    if (tanque.health > 35) {
+        screenSetColor(GREEN, BLACK);
+    } else if (tanque.health > 15) {
+        screenSetColor(YELLOW, BLACK);
+    } else {
+        screenSetColor(RED, BLACK);
+    }
+
+    // Desenha a barra de vida
+    printf("[");
+    for (int i = 0; i < BOSS_HEALTH_BAR_LENGTH; i++) {
+        if (i < healthSegments) {
+            printf("=");
+        } else {
+            printf(" ");
+        }
+    }
+    printf("] %d/50", tanque.health);  // Exibe a saúde atual do chefe
+    fflush(stdout);
 }
 
 void moveBoss() {
@@ -1168,15 +1201,14 @@ void moveBoss() {
         } else if (tanque.tick == 12) {
             tanque.cooldown = 5;
             tanque.tick = 0;
-            tanque.move = 4;
+            tanque.move = 1;
         }
         tanque.tick += 1;
-
-    } else if (tanque.move == 4) {
 
     }
 
     drawBoss(tanque.x, tanque.y);
+    drawBossHealthBar();
 }
 
 void spawnEnemies() {
@@ -1232,6 +1264,21 @@ void showAttackFeedback() {
 void playerAttack() {
     showAttackFeedback();
 
+    if (mapIndex == 2) {
+        // Verifica se o ataque atingiu a área do Boss Tanque
+        if (abs(tanque.x - player.x) <= 1 && abs(tanque.y - player.y) <= 1) {
+            // Verifica se o jogador está dentro da área do tanque
+            if (player.x >= tanque.x - bossWidth / 2 && player.x <= tanque.x + bossWidth / 2 &&
+                player.y >= tanque.y - bossHeight / 2 && player.y <= tanque.y + bossHeight / 2) {
+                tanque.health -= 1;  // Ajuste o dano conforme necessário
+                if (tanque.health <= 0) {
+                    tanque.health = 0;
+                    // Ação quando o Boss Tanque morre
+                }
+            }
+        }
+    }
+
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) continue;
 
@@ -1259,6 +1306,7 @@ void playerAttack() {
     drawDrops();
     if (mapIndex == 2) {
         drawBoss(tanque.x, tanque.y);
+        drawBossHealthBar();
     }
 }
 
@@ -1290,6 +1338,20 @@ void playerShoot(int dx, int dy) {
         fflush(stdout);
         usleep(25000);
 
+        if (mapIndex == 2) {
+            // Verifica se o tiro atingiu a área do tanque
+            if (x >= tanque.x - bossWidth / 2 && x <= tanque.x + bossWidth / 2 &&
+                y >= tanque.y - bossHeight / 2 && y <= tanque.y + bossHeight / 2) {
+                // Dano ao tanque
+                tanque.health -= 1;  // Ajuste conforme necessário
+                if (tanque.health <= 0) {
+                    tanque.health = 0;
+                    // Se o Boss Tanque morrer, você pode fazer alguma ação, como ele desaparecer
+                }
+                break;
+                }
+        }
+
         for (int i = 0; i < MAX_ENEMIES; i++) {
             if (enemies[i].alive && enemies[i].x == x && enemies[i].y == y) {
                 enemies[i].alive = 0;
@@ -1320,65 +1382,84 @@ void playerShoot(int dx, int dy) {
     drawDrops();
     if (mapIndex == 2) {
         drawBoss(tanque.x, tanque.y);
+        drawBossHealthBar();
     }
 }
 
 void playerShotgunShoot(int dx, int dy) {
     if (!player.hasShotgun || player.ammo <= 0) return;
 
-    int x = player.x + dx;
-    int y = player.y + dy;
-    int range = 5;  // A shotgun tem um alcance de 5
-    int spread[] = {1, 3, 5, 5, 5};  // Define o número de blocos atingidos por cada "passo" da shotgun
+    int startX = player.x + dx;
+    int startY = player.y + dy;
+    int range = 5;  // Alcance fixo da shotgun
 
     player.ammo--;
 
     screenSetColor(CYAN, BLACK);
 
-    for (int step = 0; step < range; step++) {
-        int spreadRadius = spread[step] / 2;  // Define a "largura" do tiro para a shotgun
-        
-        for (int offset = -spreadRadius; offset <= spreadRadius; offset++) {
-            int targetX = x + (dy == 0 ? 0 : offset);  // Espalha horizontalmente, se dx != 0
-            int targetY = y + (dx == 0 ? 0 : offset);  // Espalha verticalmente, se dy != 0
+    for (int i = 0; i < range; i++) {
+        // Desenha os três tiros da linha atual
+        for (int offset = -1; offset <= 1; offset++) {
+            int x = startX + dx * i + (dy == 0 ? 0 : offset);  // Ajusta para tiros horizontais
+            int y = startY + dy * i + (dx == 0 ? 0 : offset);  // Ajusta para tiros verticais
 
             // Verifica se a posição está dentro dos limites do mapa
-            if (targetX < 0 || targetX >= MAP_WIDTH || targetY < 0 || targetY >= MAP_HEIGHT) continue;
+            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) continue;
 
             // Verifica colisão com paredes
-            if (maps[mapIndex][targetY][targetX] == '#') continue;
+            if (maps[mapIndex][y][x] == '#') continue;
 
             // Desenha o tiro na posição atual
-            screenGotoxy(targetX, targetY);
-            printf("*");  // Caracter representando o tiro da shotgun
+            screenGotoxy(x, y);
+            printf("*");
             fflush(stdout);
-            usleep(10000);  // Tempo reduzido para o efeito de espalhamento
+
+            // Checa se o tiro atingiu o Boss Tanque
+            if (mapIndex == 2 &&
+                x >= tanque.x - bossWidth / 2 && x <= tanque.x + bossWidth / 2 &&
+                y >= tanque.y - bossHeight / 2 && y <= tanque.y + bossHeight / 2) {
+                tanque.health -= 1;
+                if (tanque.health <= 0) {
+                    tanque.health = 0;
+                    // Ação quando o Boss Tanque morre
+                }
+                continue;
+            }
 
             // Checa se o tiro atingiu algum inimigo
-            for (int i = 0; i < MAX_ENEMIES; i++) {
-                if (enemies[i].alive && enemies[i].x == targetX && enemies[i].y == targetY) {
-                    enemies[i].alive = 0;
+            for (int j = 0; j < MAX_ENEMIES; j++) {
+                if (enemies[j].alive && enemies[j].x == x && enemies[j].y == y) {
+                    enemies[j].alive = 0;
                     enemies_dead++;
-                    screenGotoxy(targetX, targetY);
+                    screenGotoxy(x, y);
                     printf(" ");
                     int dropChance = rand() % 100;
                     if (dropChance < DROP_CHANCE) {
-                        spawnDrop(enemies[i].x, enemies[i].y);
+                        spawnDrop(enemies[j].x, enemies[j].y);
                     }
                     pontosGanhos = 100 * combo;
                     updateScore(100, 1);
                 }
             }
-
-            // Limpa o tiro na posição atual após breve exibição
-            screenGotoxy(targetX, targetY);
-
-            fflush(stdout);
         }
 
-        // Avança o tiro da shotgun
-        x += dx;
-        y += dy;
+        // Pausa para exibir os tiros na linha atual antes de apagar
+        usleep(25000);
+
+        // Apaga a linha anterior para criar o efeito de movimento
+        if (i > 0) {
+            for (int offset = -1; offset <= 1; offset++) {
+                int x = startX + dx * (i - 1) + (dy == 0 ? 0 : offset);
+                int y = startY + dy * (i - 1) + (dx == 0 ? 0 : offset);
+
+                // Verifica se a posição está dentro dos limites do mapa
+                if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) continue;
+
+                screenGotoxy(x, y);
+                printf(" ");
+            }
+        }
+        fflush(stdout);
     }
 
     // Atualiza o mapa e o jogador
@@ -1388,6 +1469,7 @@ void playerShotgunShoot(int dx, int dy) {
     drawDrops();
     if (mapIndex == 2) {
         drawBoss(tanque.x, tanque.y);
+        drawBossHealthBar();
     }
 }
 
@@ -1451,6 +1533,7 @@ void enemyShoot(int enemyIndex, int plx, int ply) {
     drawDrops();
     if (mapIndex == 2) {
         drawBoss(tanque.x, tanque.y);
+        drawBossHealthBar();
     }
 }
 
@@ -1505,11 +1588,12 @@ void bossShockwave() {
                 }
             }
         }
-        usleep(50000); // Atraso para o efeito de expansão
+        usleep(25000); // Atraso para o efeito de expansão
         screenDrawMap(mapIndex);
         drawPlayer();
         drawEnemies();
         drawDrops();
         drawBoss(tanque.x, tanque.y);
+        drawBossHealthBar();
     }
 }
