@@ -141,10 +141,16 @@ int main() {
 
     mapIndex = 0;
     player.ammo = MAX_AMMO;
-    player.clips = 2;
     player.hasWeapon = 0;
     player.hasShotgun = 0;
-    player.currentWeapon = -1; // Começa sem arma
+    player.currentWeapon = -1; 
+    if (player.mask == 1) {
+        player.health = PLAYER_MAX_HEALTH;
+    }
+    else player.health = 3;
+
+    if (player.mask == 0) player.clips = 3;
+    else player.clips = 2;
 
     screenDrawMap(mapIndex);
     drawPlayer();
@@ -177,10 +183,10 @@ int main() {
                 case 'k': if (player.currentWeapon == 1) playerShotgunShoot(0, 1); else playerShoot(0, 1); break;
                 case 'j': if (player.currentWeapon == 1) playerShotgunShoot(-1, 0); else playerShoot(-1, 0); break;
                 case 'l': if (player.currentWeapon == 1) playerShotgunShoot(1, 0); else playerShoot(1, 0); break;
-                case 'u': playerShoot(-1, -1); break;   // Diagonal superior esquerda
-                case 'o': playerShoot(1, -1); break;   // Diagonal superior direita
-                case 'm': playerShoot(-1, 1); break;   // Diagonal inferior esquerda
-                case ',': playerShoot(1, 1); break;    // Diagonal inferior direita
+                case 'u': if (player.mask == 2) playerShoot(-1, -1); break;   // Diagonal superior esquerda
+                case 'o': if (player.mask == 2) playerShoot(1, -1); break;   // Diagonal superior direita
+                case 'm': if (player.mask == 2) playerShoot(-1, 1); break;   // Diagonal inferior esquerda
+                case ',': if (player.mask == 2) playerShoot(1, 1); break;    // Diagonal inferior direita
                 case 'r': reload(); break;
                 case 't':
                     if (player.hasWeapon && player.hasShotgun) {
@@ -288,11 +294,11 @@ void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
     screenGotoxy(player.x, player.y);
    if (player.mask == 0) 
-    printf("C");  // Representação do  com "C"
+    printf("C"); 
 else if (player.mask == 1) 
-    printf("L");  // Representação do  com "L"
+    printf("L"); 
 else if (player.mask == 2) 
-    printf("F");  // Representação do  com "F"
+    printf("F");
     fflush(stdout);
 }
 
@@ -495,14 +501,36 @@ void movePlayer(int dx, int dy) {
 
         for (int i = 0; i < MAX_ENEMIES; i++) {
             if (drops[i].active && drops[i].x == player.x && drops[i].y == player.y) {
-                if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
-                    player.clips++;
-                } else if (drops[i].type == 2 && player.health < PLAYER_MAX_HEALTH) {
-                    player.health++;
+                if (player.mask == 0){
+                    if (drops[i].type == 1 && player.clips < 3) {
+                        player.clips++;
+                    } else if (drops[i].type == 2 && player.health < 3) {
+                        player.health++;
+                    }
+                    drops[i].active = 0;
+                    screenGotoxy(drops[i].x, drops[i].y);
+                    printf(" ");
                 }
-                drops[i].active = 0;
-                screenGotoxy(drops[i].x, drops[i].y);
-                printf(" ");
+                if (player.mask == 1){
+                    if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
+                        player.clips++;
+                    } else if (drops[i].type == 2 && player.health < PLAYER_MAX_HEALTH) {
+                        player.health++;
+                    }
+                    drops[i].active = 0;
+                    screenGotoxy(drops[i].x, drops[i].y);
+                    printf(" ");
+                }
+                if (player.mask == 2){
+                    if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
+                        player.clips++;
+                    } else if (drops[i].type == 2 && player.health < 3) {
+                        player.health++;
+                    }
+                    drops[i].active = 0;
+                    screenGotoxy(drops[i].x, drops[i].y);
+                    printf(" ");
+                }
             }
         }
     }
