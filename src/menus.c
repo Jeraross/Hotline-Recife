@@ -140,7 +140,8 @@ void displayEndGame(char *nome, int tamanho) {
     for (int i = 0; i < sizeof(ascii_art) / sizeof(ascii_art[0]); i++) {
         printf("%s\n", ascii_art[i]);
     }
-
+    screenClear();
+    keyboardDestroy();
     printf("Digite seu nome: ");
     fgets(nome, tamanho, stdin);
 

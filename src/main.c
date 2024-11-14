@@ -426,6 +426,7 @@ int doorVerify() {
         enemies_dead = 0;
         if (mapIndex >= NUM_MAPS) {
             displayEndGame(player.name, sizeof(player.name));
+            printf("Parabens %s!\n", player.name);
         }
         else{
             return 1;
