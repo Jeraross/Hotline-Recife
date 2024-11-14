@@ -7,19 +7,27 @@
 #include "timer.h"
 
 #define NUM_MAPS 1
-#define MAP_HEIGHT 6
+#define MAP_HEIGHT 15
 #define MAP_WIDTH 80
 #define MAX_CAR_ENEMIES 5
+#define MAP_START_Y 1
 
 #define COLOR_WALL YELLOW
 #define COLOR_FLOOR LIGHTGRAY
 #define COLOR_PLAYER GREEN
 #define COLOR_ENEMY MAGENTA
 
-const int MAP_START_Y = 1;
-
 char maps[NUM_MAPS][MAP_HEIGHT + 1][MAP_WIDTH + 1] = {
     {
+        "                                                                      ",
+        "                                                                      ",
+        "                                                                      ",
+        "________________________________________________________________________________",
+        "                                                                      ",
+        "                                                                      ",
+        "                                                                      ",
+        "                                                                      ",
+        "                                                                      ",
         "                                                                      ",
         "                                                                      ",
         "                                                                      ",
@@ -33,7 +41,7 @@ typedef struct {
     int x, y;
 } Carplayer;
 
-Carplayer car_player = {5, MAP_START_Y}; 
+Carplayer car_player = {5, MAP_START_Y + 4}; 
 
 typedef struct {
     int x, y;
@@ -70,9 +78,9 @@ int main() {
             if (ch == 'q') {
                 running = 0; 
             } else if (ch == 'w') {
-                moveCarplayer(0, -2); 
+                moveCarplayer(0, -3); 
             } else if (ch == 's') {
-                moveCarplayer(0, 2); 
+                moveCarplayer(0, 3); 
             }
         }
 
@@ -138,6 +146,10 @@ void screenDrawMap(int mapIndex) {
                     screenSetColor(COLOR_FLOOR, BLACK);
                     printf(" ");
                     break;
+                case '_':
+                    screenSetColor(COLOR_FLOOR, BLACK);
+                    printf("_");
+                    break;
                 default:
                     screenSetColor(COLOR_FLOOR, BLACK);
                     printf(" ");
@@ -175,7 +187,7 @@ void moveCarplayer(int dx, int dy) {
     int newX = car_player.x + dx;
     int newY = car_player.y + dy;
 
-    if (newY >= MAP_START_Y && newY < MAP_START_Y + MAP_HEIGHT) {
+    if (newY >= MAP_START_Y + 4 && newY < MAP_START_Y + 4 + MAP_HEIGHT) {
         screenGotoxy(car_player.x - 4, car_player.y);
         printf("     ");
         screenGotoxy(car_player.x - 4, car_player.y + 1);
@@ -202,7 +214,6 @@ void moveCarenemy() {
         }
     }
     drawCarenemy();
-    drawCarplayer();
     checkCollision();
 }
 
@@ -210,7 +221,7 @@ void spawnCarenemy() {
     for (int i = 0; i < MAX_CAR_ENEMIES; i++) {
         if (!car_enemies[i].active) {
             car_enemies[i].x = MAP_WIDTH - 5;
-            car_enemies[i].y = MAP_START_Y + rand() % (MAP_HEIGHT/2)*2; 
+            car_enemies[i].y = MAP_START_Y + 4 + (rand() % 4)*3; 
             car_enemies[i].active = 1;
             break;
         }
