@@ -4,5 +4,7 @@
 void displayMenu();
 
 void displayOpeningArt();
+ 
+void displayEndGame(char *nome, int tamanho);
 
 #endif /* __MENUS_H__ */
