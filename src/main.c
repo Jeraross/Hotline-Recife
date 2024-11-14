@@ -59,6 +59,7 @@ typedef struct {
     int clips;
     int currentWeapon; // 0 para pistola, 1 para shotgun
     int mask; //0 = Galo, 1 = Leao, 2 = Timbu
+    char name[20];
 } Player;
 
 
@@ -84,7 +85,7 @@ typedef struct {
     int tick;
 } Boss;
 
-Boss tanque = {MAP_WIDTH / 2, MAP_HEIGHT / 2, 50, 0, 1, 0};
+Boss tanque = {MAP_WIDTH / 2, MAP_HEIGHT / 2, 1, 0, 1, 0};
 
 time_t lastEnemySpawn;
 time_t lastDropSpawn;
@@ -224,13 +225,13 @@ int main() {
         drawHUD();
         drawGun();
         drawDrops();
+        drawDoor();
 
         // Verificar se o tempo do combo acabou
         if (combo >= 2 && difftime(time(NULL), comboStartTime) >= 5) {
             combo = 1;  // Reseta o combo se o tempo acabou
         }
 
-        drawDoor();
 
         if (doorVerify()){
             // Reinicia o array de inimigos
@@ -242,8 +243,13 @@ int main() {
             // Reinicia o jogador e o cenário
             player.x = 2;
             player.y = 2;
+            if (mapIndex == 1) {
             porta_x = 27;
             porta_y = 19;
+            } else if (mapIndex == 2) {
+                porta_x = 27;
+                porta_y = 10;
+            }
 
             // Limpa a tela e desenha o novo mapa
             screenClear();
@@ -404,7 +410,7 @@ void drawDrops() {
 }
 
 void drawDoor() {
-    if (enemies_dead < 10) return;
+    if (enemies_dead < 10 || tanque.health > 0) return;
     screenGotoxy(porta_x, porta_y);
     screenSetColor(COLOR_DOOR, BLACK);
     printf("🚪");
@@ -412,15 +418,11 @@ void drawDoor() {
 }
 
 int doorVerify() {
-    if (enemies_dead >= 10 && (player.x == porta_x || player.x + 1 == porta_x) && player.y == porta_y) {
+    if ((enemies_dead >= 10 && (player.x == porta_x || player.x + 1 == porta_x) && player.y == porta_y) || (tanque.health <= 0 && (player.x == porta_x || player.x + 1 == porta_x) && player.y == porta_y)) {
         mapIndex++;
         enemies_dead = 0;
         if (mapIndex >= NUM_MAPS) {
-            screenClear();
-            keyboardDestroy();
-            screenGotoxy(0, MAP_HEIGHT + 1);
-            printf("Fim de jogo!");
-            exit(0);
+            displayEndGame(player.name, sizeof(player.name));
         }
         else{
             return 1;
@@ -692,6 +694,7 @@ void moveEnemies() {
 
         if ((nextX == player.x || nextX == player.x + 1) && nextY == player.y) {
             handlePlayerHit();
+            enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
             continue;
         }
 
@@ -976,6 +979,8 @@ void handlePlayerHit() {
     player.health--;
     drawHUD();
     if (player.health <= 0) {
+        screenDestroy();
+        keyboardDestroy();
         printf("Game Over!\n");
         exit(0);
     }

@@ -1,6 +1,7 @@
 #include "screen.h"
 #include "menus.h"
 #include "keyboard.h"
+#include <string.h>
 
 void displayMenu() {
     screenClear();
@@ -107,4 +108,42 @@ void displayOpeningArt() {
             }
         }
 }
+}
+
+void displayEndGame(char *nome, int tamanho) {
+    char *ascii_art[] = {                           
+"        (                                    ",
+"*                           )   *            ",
+"              )     *      (                 ",
+"    )        (                   (           ",
+"   (          )     (             )          ",
+"    )    *           )        )  (           ", 
+"   (                (        (      *        ",
+"    )          H     )        )      (       ", 
+"              [ ]            (               ",
+"       (  *   |-|       *     )    (         ",
+" *      )     |_|        .          )        ", 
+"       (      | |    .                       ",
+" )           /   \\     .    ' .        *    ",
+"(           |_____|  '  .    .               ",
+" )          | ___ |   \\~~/  ' .     (       ",
+"        *   | \\ / |  \\_/   \\~~~/   )      ",
+"            | _Y_ |     |     \\_/   (       ",
+"*           |-----|   __|__     |            ",
+"            `-----`           __|__          ",
+"                                             ",
+"                                             ",
+"           Missão Completa, Agente!          ",
+"               Vamos Comemorar!              ",
+};
+
+    for (int i = 0; i < sizeof(ascii_art) / sizeof(ascii_art[0]); i++) {
+        printf("%s\n", ascii_art[i]);
+    }
+
+    printf("Digite seu nome: ");
+    fgets(nome, tamanho, stdin);
+
+    nome[strcspn(nome, "\n")] = 0;
+
 }
