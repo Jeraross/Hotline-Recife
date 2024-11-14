@@ -9,8 +9,9 @@
 #define NUM_MAPS 1
 #define MAP_HEIGHT 15
 #define MAP_WIDTH 80
-#define MAX_CAR_ENEMIES 15
+#define MAX_CLOUDS 100
 #define MAX_TRAFFIC_LANES 100
+#define MAX_CAR_ENEMIES 15
 #define MAP_START_Y 1
 
 #define COLOR_FLOOR LIGHTGRAY
@@ -19,6 +20,7 @@
 #define COLOR_ENEMY MAGENTA
 #define COLOR_TRAFFIC_LANE YELLOW
 #define COLOR_MOON YELLOW
+#define COLOR_CLOUDS WHITE
 
 char maps[NUM_MAPS][MAP_HEIGHT + 1][MAP_WIDTH + 1] = {
     {
@@ -63,6 +65,13 @@ Moon moon = {0};
 typedef struct {
     int x, y;
     int active;
+} Clouds;
+
+Clouds clouds[MAX_CLOUDS] = {0};
+
+typedef struct {
+    int x, y;
+    int active;
 } Trafficlane;
 
 Trafficlane traffic_lanes[MAX_TRAFFIC_LANES] = {{4,7,1},{12,7,1},{20,7,1},{28,7,1},{36,7,1},{44,7,1},{52,7,1},{60,7,1},{68,7,1},{76,7,1}};
@@ -71,14 +80,17 @@ int mapIndex = 0;
 
 void screenDrawMinigameMap(int mapIndex);
 void drawMoon();
+void drawClouds();
 void drawTrafficLane();
 void drawCarplayer();
 void drawCarenemy();
 void moveMoon();
+void moveClouds();
 void moveTrafficLane();
 void moveCarplayer(int dx, int dy);
 void moveCarenemy();
 void spawnMoon();
+void spawnClouds();
 void spawnTrafficLane();
 void spawnCarenemy();
 void checkCollision();
@@ -91,10 +103,15 @@ int main() {
 
     int running = 1;
 
-    int moon_timer = 0;
+    int moon_velocity = 0;
+
+    int spawn_clouds_counter = 0;
+    int spawn_clouds_choice = 0;
+    int clouds_velocity = 0;
 
     int spawn_car_counter = 0;
     int spawn_car_choice = 0;
+
     int spawn_traffic_lane_counter = 0;
 
     screenDrawMinigameMap(mapIndex);
@@ -122,11 +139,48 @@ int main() {
             moveTrafficLane();
             drawTrafficLane();
 
-            moon_timer += 25;
+            moon_velocity += 25;
 
-            if (moon_timer >= 500) {
+            if (moon_velocity >= 500) {
                 moveMoon();
-                moon_timer = 0;
+                moon_velocity = 0;
+            }
+
+            clouds_velocity += 25;
+
+            if (clouds_velocity >= 50) {
+                moveClouds();
+                clouds_velocity = 0;
+            }
+
+            spawn_clouds_counter += 25;
+
+            if (spawn_clouds_choice < 4 && spawn_clouds_counter >= 600 && spawn_clouds_counter < 800) {
+                if (rand() % 100 < 50) {  
+                    spawnClouds();
+                    spawn_clouds_counter = 0; 
+                } else {
+                    spawn_clouds_choice++;
+                }
+            }
+
+            if (spawn_clouds_choice < 8 && spawn_clouds_counter >= 800 && spawn_clouds_counter < 1000) {
+                if (rand() % 100 < 50) {  
+                    spawnClouds();
+                    spawnClouds();
+                    spawn_clouds_counter = 0; 
+                    spawn_clouds_choice = 0;
+                } else {
+                    spawn_clouds_choice++;
+                }
+            }
+
+            if (spawn_clouds_counter >= 1000) {
+                spawnClouds();
+                spawnClouds();
+                spawnClouds();
+                spawn_clouds_counter = 0; 
+                spawn_clouds_choice = 0;
             }
 
             spawn_car_counter += 25;
@@ -233,6 +287,17 @@ void drawMoon(){
     fflush(stdout);
 }
 
+void drawClouds(){
+    for (int i = 0; i < MAX_CLOUDS; i++) {
+        if (clouds[i].active) {
+            screenSetColor(COLOR_CLOUDS, WHITE);
+            screenGotoxy(clouds[i].x, clouds[i].y);
+            printf("☁︎·°｡⋆");
+        }
+    }
+    fflush(stdout);
+}
+
 void drawTrafficLane(){
     for (int i = 0; i < MAX_TRAFFIC_LANES; i++) {
         if (traffic_lanes[i].active) {
@@ -286,6 +351,23 @@ void moveMoon() {
         }
     }
     drawMoon();
+}
+
+void moveClouds() {
+    for (int i = 0; i < MAX_CLOUDS; i++) {
+        if (clouds[i].active) {
+            screenSetColor(COLOR_CLOUDS, WHITE);
+            screenGotoxy(clouds[i].x, clouds[i].y);
+            printf("       ");
+            clouds[i].x--;
+
+            if (clouds[i].x < 0) {
+                clouds[i].x = 0;
+                clouds[i].active = 0;
+            }
+        }
+    }
+    drawClouds();
 }
 
 void moveTrafficLane() {
@@ -349,6 +431,17 @@ void spawnMoon() {
             moon.x = MAP_WIDTH - 7;
             moon.y = MAP_START_Y + 1;
             moon.active = 1;
+            break;
+        }
+    }
+}
+
+void spawnClouds() {
+    for (int i = 0; i < MAX_CLOUDS; i++) {
+        if (!clouds[i].active) {
+            clouds[i].x = MAP_WIDTH - 5;
+            clouds[i].y = MAP_START_Y + (rand() % 3); 
+            clouds[i].active = 1;
             break;
         }
     }
