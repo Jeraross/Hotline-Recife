@@ -9,19 +9,22 @@
 #define NUM_MAPS 1
 #define MAP_HEIGHT 15
 #define MAP_WIDTH 80
-#define MAX_CAR_ENEMIES 5
+#define MAX_CAR_ENEMIES 15
+#define MAX_TRAFFIC_LANES 100
 #define MAP_START_Y 1
 
-#define COLOR_WALL YELLOW
 #define COLOR_FLOOR LIGHTGRAY
+#define COLOR_SKY BLACK
 #define COLOR_PLAYER GREEN
 #define COLOR_ENEMY MAGENTA
+#define COLOR_TRAFFIC_LANE YELLOW
+#define COLOR_MOON YELLOW
 
 char maps[NUM_MAPS][MAP_HEIGHT + 1][MAP_WIDTH + 1] = {
     {
-        "                                                                      ",
-        "                                                                      ",
-        "                                                                      ",
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "________________________________________________________________________________",
         "                                                                      ",
         "                                                                      ",
@@ -41,7 +44,7 @@ typedef struct {
     int x, y;
 } Carplayer;
 
-Carplayer car_player = {5, MAP_START_Y + 4}; 
+Carplayer car_player = {7, MAP_START_Y + 4}; 
 
 typedef struct {
     int x, y;
@@ -50,13 +53,33 @@ typedef struct {
 
 Carenemy car_enemies[MAX_CAR_ENEMIES] = {0};
 
+typedef struct {
+    int x, y;
+    int active;
+} Moon;
+
+Moon moon = {0};
+
+typedef struct {
+    int x, y;
+    int active;
+} Trafficlane;
+
+Trafficlane traffic_lanes[MAX_TRAFFIC_LANES] = {{4,7,1},{12,7,1},{20,7,1},{28,7,1},{36,7,1},{44,7,1},{52,7,1},{60,7,1},{68,7,1},{76,7,1}};
+
 int mapIndex = 0;
 
-void screenDrawMap(int mapIndex);
+void screenDrawMinigameMap(int mapIndex);
+void drawMoon();
+void drawTrafficLane();
 void drawCarplayer();
 void drawCarenemy();
+void moveMoon();
+void moveTrafficLane();
 void moveCarplayer(int dx, int dy);
 void moveCarenemy();
+void spawnMoon();
+void spawnTrafficLane();
 void spawnCarenemy();
 void checkCollision();
 
@@ -67,9 +90,14 @@ int main() {
     timerInit(25);
 
     int running = 1;
-    int spawnCounter = 0;
 
-    screenDrawMap(mapIndex);
+    int moon_timer = 0;
+
+    int spawn_car_counter = 0;
+    int spawn_car_choice = 0;
+    int spawn_traffic_lane_counter = 0;
+
+    screenDrawMinigameMap(mapIndex);
     drawCarplayer();
 
     while (running) {
@@ -85,27 +113,60 @@ int main() {
         }
 
         if (timerTimeOver()) {
-            moveCarenemy();
-            spawnCounter += 25;
 
-            if (spawnCounter >= 800 && spawnCounter < 1200) {
+            moveCarenemy();
+
+            spawnMoon();
+            drawMoon();
+
+            moveTrafficLane();
+            drawTrafficLane();
+
+            moon_timer += 25;
+
+            if (moon_timer >= 500) {
+                moveMoon();
+                moon_timer = 0;
+            }
+
+            spawn_car_counter += 25;
+
+            if (spawn_car_choice < 4 && spawn_car_counter >= 300 && spawn_car_counter < 400) {
                 if (rand() % 100 < 50) {  
                     spawnCarenemy();
-                    spawnCounter = 0; 
+                    spawn_car_counter = 0; 
+                } else {
+                    spawn_car_choice++;
                 }
             }
 
-            if (spawnCounter >= 1200 && spawnCounter < 1600) {
-                if (rand() % 100 < 75) {  
+            if (spawn_car_choice < 8 && spawn_car_counter >= 400 && spawn_car_counter < 500) {
+                if (rand() % 100 < 50) {  
                     spawnCarenemy();
-                    spawnCounter = 0; 
+                    spawnCarenemy();
+                    spawn_car_counter = 0; 
+                    spawn_car_choice = 0;
+                } else {
+                    spawn_car_choice++;
                 }
             }
 
-            if (spawnCounter >= 1600) {
+            if (spawn_car_counter >= 500) {
                 spawnCarenemy();
-                spawnCounter = 0; 
+                spawnCarenemy();
+                spawnCarenemy();
+                spawn_car_counter = 0; 
+                spawn_car_choice = 0;
             }
+
+            spawn_traffic_lane_counter += 25;
+
+            if (spawn_traffic_lane_counter >= 200) {
+                spawnTrafficLane();
+                spawn_traffic_lane_counter = 0; 
+            }
+
+            
         }
 
         checkCollision();
@@ -133,7 +194,7 @@ void checkCollision() {
     }
 }
 
-void screenDrawMap(int mapIndex) {
+void screenDrawMinigameMap(int mapIndex) {
     screenClear();
     
     for (int y = 0; y < MAP_HEIGHT; y++) {
@@ -142,12 +203,12 @@ void screenDrawMap(int mapIndex) {
             char cell = maps[mapIndex][y][x];
 
             switch(cell) {
-                case '-':
-                    screenSetColor(COLOR_FLOOR, BLACK);
+                case 'c':
+                    screenSetColor(COLOR_SKY, BLACK);
                     printf(" ");
                     break;
                 case '_':
-                    screenSetColor(COLOR_FLOOR, BLACK);
+                    screenSetColor(COLOR_SKY, BLACK);
                     printf("_");
                     break;
                 default:
@@ -158,6 +219,32 @@ void screenDrawMap(int mapIndex) {
         }
     }
     screenSetColor(WHITE, BLACK);
+    fflush(stdout);
+}
+
+void drawMoon(){
+    for (int i = 0; i < 1; i++) {
+        if (moon.active) {
+            screenSetColor(COLOR_MOON, YELLOW);
+            screenGotoxy(moon.x, moon.y);
+            printf("🌙");
+        }
+    }
+    fflush(stdout);
+}
+
+void drawTrafficLane(){
+    for (int i = 0; i < MAX_TRAFFIC_LANES; i++) {
+        if (traffic_lanes[i].active) {
+            screenSetColor(COLOR_TRAFFIC_LANE, YELLOW);
+            screenGotoxy(traffic_lanes[i].x, traffic_lanes[i].y);
+            printf("--- ");
+            screenGotoxy(traffic_lanes[i].x, traffic_lanes[i].y + 3);
+            printf("--- ");
+            screenGotoxy(traffic_lanes[i].x, traffic_lanes[i].y + 6);
+            printf("--- ");
+        }
+    }
     fflush(stdout);
 }
 
@@ -183,11 +270,50 @@ void drawCarenemy() {
     fflush(stdout);
 }
 
+void moveMoon() {
+    for (int i = 0; i < 1; i++) {
+        if (moon.active) {
+            screenSetColor(COLOR_MOON, YELLOW);
+            screenGotoxy(moon.x, moon.y);
+            printf("  ");
+            moon.x--;
+
+            if (moon.x < 0) {
+                moon.x = 0;
+                screenClear();
+                exit(0);
+            }
+        }
+    }
+    drawMoon();
+}
+
+void moveTrafficLane() {
+    for (int i = 0; i < MAX_TRAFFIC_LANES; i++) {
+        if (traffic_lanes[i].active) {
+            screenGotoxy(traffic_lanes[i].x, traffic_lanes[i].y);
+            printf("     ");
+            screenGotoxy(traffic_lanes[i].x, traffic_lanes[i].y + 3);
+            printf("     ");
+            screenGotoxy(traffic_lanes[i].x, traffic_lanes[i].y + 6);
+            printf("     ");
+            traffic_lanes[i].x--;
+
+            if (traffic_lanes[i].x < 0) {
+                traffic_lanes[i].x = 0;
+                traffic_lanes[i].active = 0;
+            }
+        }
+    }
+    drawTrafficLane();
+}
+
+
 void moveCarplayer(int dx, int dy) {
     int newX = car_player.x + dx;
     int newY = car_player.y + dy;
 
-    if (newY >= MAP_START_Y + 4 && newY < MAP_START_Y + 4 + MAP_HEIGHT) {
+    if (newY >= MAP_START_Y + 4 && newY < MAP_HEIGHT) {
         screenGotoxy(car_player.x - 4, car_player.y);
         printf("     ");
         screenGotoxy(car_player.x - 4, car_player.y + 1);
@@ -217,6 +343,28 @@ void moveCarenemy() {
     checkCollision();
 }
 
+void spawnMoon() {
+    for (int i = 0; i < 1; i++) {
+        if (!moon.active) {
+            moon.x = MAP_WIDTH - 7;
+            moon.y = MAP_START_Y + 1;
+            moon.active = 1;
+            break;
+        }
+    }
+}
+
+void spawnTrafficLane() {
+    for (int i = 0; i < MAX_TRAFFIC_LANES; i++) {
+        if (!traffic_lanes[i].active) {
+            traffic_lanes[i].x = MAP_WIDTH - 4;
+            traffic_lanes[i].y = MAP_START_Y + 6;
+            traffic_lanes[i].active = 1;
+            break;
+        }
+    }
+}
+
 void spawnCarenemy() {
     for (int i = 0; i < MAX_CAR_ENEMIES; i++) {
         if (!car_enemies[i].active) {
@@ -227,3 +375,5 @@ void spawnCarenemy() {
         }
     }
 }
+
+
