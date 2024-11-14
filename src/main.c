@@ -7,21 +7,25 @@
 #include "timer.h"
 
 #define NUM_MAPS 1
-#define MAP_HEIGHT 4  // Mudado para 4 linhas
-#define MAP_WIDTH 35
-#define MAX_CAR_ENEMIES 10
+#define MAP_HEIGHT 6
+#define MAP_WIDTH 80
+#define MAX_CAR_ENEMIES 5
 
 #define COLOR_WALL YELLOW
 #define COLOR_FLOOR LIGHTGRAY
 #define COLOR_PLAYER GREEN
 #define COLOR_ENEMY MAGENTA
 
-char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH + 1] = {
+const int MAP_START_Y = 1;
+
+char maps[NUM_MAPS][MAP_HEIGHT + 1][MAP_WIDTH + 1] = {
     {
-        "-----------------------------------",
-        "-----------------------------------",
-        "-----------------------------------",
-        "-----------------------------------",
+        "                                                                      ",
+        "                                                                      ",
+        "                                                                      ",
+        "                                                                      ",
+        "                                                                      ",
+        "                                                                      ",
     }
 };
 
@@ -29,7 +33,7 @@ typedef struct {
     int x, y;
 } Carplayer;
 
-Carplayer car_player = {0, 1}; 
+Carplayer car_player = {5, MAP_START_Y}; 
 
 typedef struct {
     int x, y;
@@ -52,7 +56,7 @@ int main() {
     srand(time(NULL));
     screenInit(0);
     keyboardInit();
-    timerInit(100);
+    timerInit(25);
 
     int running = 1;
     int spawnCounter = 0;
@@ -66,24 +70,31 @@ int main() {
             if (ch == 'q') {
                 running = 0; 
             } else if (ch == 'w') {
-                moveCarplayer(0, -1); 
+                moveCarplayer(0, -2); 
             } else if (ch == 's') {
-                moveCarplayer(0, 1); 
+                moveCarplayer(0, 2); 
             }
         }
 
         if (timerTimeOver()) {
             moveCarenemy();
-            spawnCounter += 100;
+            spawnCounter += 25;
 
-            if (spawnCounter >= 400 && spawnCounter < 800) {
+            if (spawnCounter >= 800 && spawnCounter < 1200) {
                 if (rand() % 100 < 50) {  
                     spawnCarenemy();
                     spawnCounter = 0; 
                 }
             }
 
-            if (spawnCounter >= 800) {
+            if (spawnCounter >= 1200 && spawnCounter < 1600) {
+                if (rand() % 100 < 75) {  
+                    spawnCarenemy();
+                    spawnCounter = 0; 
+                }
+            }
+
+            if (spawnCounter >= 1600) {
                 spawnCarenemy();
                 spawnCounter = 0; 
             }
@@ -103,7 +114,7 @@ void checkCollision() {
     for (int i = 0; i < MAX_CAR_ENEMIES; i++) {
         if (car_enemies[i].active && car_player.x == car_enemies[i].x && car_player.y == car_enemies[i].y) {
             screenClear();  
-            screenGotoxy(MAP_WIDTH / 2 - 5, MAP_HEIGHT / 2);  
+            screenGotoxy(MAP_WIDTH / 2 - 5, MAP_HEIGHT / 2 + MAP_START_Y);  
             screenSetColor(RED, BLACK);  
             printf("Game Over\n"); 
             screenSetColor(WHITE, BLACK); 
@@ -115,10 +126,10 @@ void checkCollision() {
 }
 
 void screenDrawMap(int mapIndex) {
-    screenClear(); 
+    screenClear();
     
     for (int y = 0; y < MAP_HEIGHT; y++) {
-        screenGotoxy(0, y); 
+        screenGotoxy(0, y + MAP_START_Y); 
         for (int x = 0; x < MAP_WIDTH; x++) {
             char cell = maps[mapIndex][y][x];
 
@@ -126,10 +137,6 @@ void screenDrawMap(int mapIndex) {
                 case '-':
                     screenSetColor(COLOR_FLOOR, BLACK);
                     printf(" ");
-                    break;
-                case '#':
-                    screenSetColor(COLOR_WALL, BLACK);
-                    printf("▓");
                     break;
                 default:
                     screenSetColor(COLOR_FLOOR, BLACK);
@@ -144,8 +151,10 @@ void screenDrawMap(int mapIndex) {
 
 void drawCarplayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
-    screenGotoxy(car_player.x, car_player.y);
-    printf("@");
+    screenGotoxy(car_player.x - 4, car_player.y);
+    printf(",︵_  ");
+    screenGotoxy(car_player.x - 4, car_player.y + 1);
+    printf("┗O=Oˡ");
     fflush(stdout);
 }
 
@@ -154,7 +163,9 @@ void drawCarenemy() {
         if (car_enemies[i].active) {
             screenSetColor(COLOR_ENEMY, BLACK);
             screenGotoxy(car_enemies[i].x, car_enemies[i].y);
-            printf("E");
+            printf(" _︵,");
+            screenGotoxy(car_enemies[i].x, car_enemies[i].y + 1);
+            printf("ˡO=O┛");
         }
     }
     fflush(stdout);
@@ -164,9 +175,11 @@ void moveCarplayer(int dx, int dy) {
     int newX = car_player.x + dx;
     int newY = car_player.y + dy;
 
-    if (newY >= 0 && newY < MAP_HEIGHT) {
-        screenGotoxy(car_player.x, car_player.y);
-        printf(" ");
+    if (newY >= MAP_START_Y && newY < MAP_START_Y + MAP_HEIGHT) {
+        screenGotoxy(car_player.x - 4, car_player.y);
+        printf("     ");
+        screenGotoxy(car_player.x - 4, car_player.y + 1);
+        printf("     ");
         car_player.x = newX;
         car_player.y = newY;
         drawCarplayer();
@@ -178,7 +191,9 @@ void moveCarenemy() {
     for (int i = 0; i < MAX_CAR_ENEMIES; i++) {
         if (car_enemies[i].active) {
             screenGotoxy(car_enemies[i].x, car_enemies[i].y);
-            printf(" ");
+            printf("     ");
+            screenGotoxy(car_enemies[i].x, car_enemies[i].y + 1);
+            printf("     ");
             car_enemies[i].x--;
 
             if (car_enemies[i].x < 0) {
@@ -187,14 +202,15 @@ void moveCarenemy() {
         }
     }
     drawCarenemy();
+    drawCarplayer();
     checkCollision();
 }
 
 void spawnCarenemy() {
     for (int i = 0; i < MAX_CAR_ENEMIES; i++) {
         if (!car_enemies[i].active) {
-            car_enemies[i].x = MAP_WIDTH - 1;
-            car_enemies[i].y = rand() % MAP_HEIGHT;
+            car_enemies[i].x = MAP_WIDTH - 5;
+            car_enemies[i].y = MAP_START_Y + rand() % (MAP_HEIGHT/2)*2; 
             car_enemies[i].active = 1;
             break;
         }
