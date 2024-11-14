@@ -404,7 +404,7 @@ void drawDrops() {
 }
 
 void drawDoor() {
-    if (enemies_dead < 10 ) return;
+    if (enemies_dead < 10) return;
     screenGotoxy(porta_x, porta_y);
     screenSetColor(COLOR_DOOR, BLACK);
     printf("🚪");
