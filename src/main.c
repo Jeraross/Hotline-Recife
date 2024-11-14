@@ -310,7 +310,7 @@ void drawEnemies() {
             if (enemies[i].cooldown > 0) {
                 screenSetColor(COLOR_ENEMY_HIT, BLACK);
             }
-            else if (enemies[i].moves <= 5 && enemies[i].moves != 0 && enemies[i].type == 2) {
+            else if (enemies[i].moves <= 4 && enemies[i].moves != 0 && enemies[i].type == 2) {
                 screenSetColor(RED, BLACK);  // Muda para branco antes de atirar
             }
             else {
@@ -341,17 +341,32 @@ void drawBoss(int x, int y) {
         screenSetColor(COLOR_ENEMY, BLACK);
     }
 
-    // Segunda linha da matriz do boss
-    screenGotoxy(x - 4, y - 1);
-    printf(" __( )===:");
+    if (tanque.health <= 0) {
+        // Segunda linha da matriz do tanque destruído
+        screenGotoxy(x - 4, y - 1);
+        printf("   ( )=_ ");
 
-    // Terceira linha da matriz do boss
-    screenGotoxy(x - 4, y);
-    printf("/~~~X~~~\\");
+        // Terceira linha da matriz do tanque destruído
+        screenGotoxy(x - 4, y);
+        printf("/\\/~-~-~\\");
 
-    // Quarta linha da matriz do boss
-    screenGotoxy(x - 4, y + 1);
-    printf("\\O.O.O.O/");
+        // Quarta linha da matriz do tanque destruído
+        screenGotoxy(x - 4, y + 1);
+        printf("\\0.0.0.==:");
+    } else {
+        // Segunda linha da matriz do boss
+        screenGotoxy(x - 4, y - 1);
+        printf(" __( )===:");
+
+        // Terceira linha da matriz do boss
+        screenGotoxy(x - 4, y);
+        printf("/~-~-~-~\\");
+
+        // Quarta linha da matriz do boss
+        screenGotoxy(x - 4, y + 1);
+        printf("\\O.O.O.O/");
+    }
+
 
     // Limpa o buffer para exibir imediatamente
     fflush(stdout);
@@ -389,7 +404,7 @@ void drawDrops() {
 }
 
 void drawDoor() {
-    if (enemies_dead < 10) return;
+    if (enemies_dead < 10 ) return;
     screenGotoxy(porta_x, porta_y);
     screenSetColor(COLOR_DOOR, BLACK);
     printf("🚪");
@@ -476,14 +491,32 @@ void movePlayer(int dx, int dy) {
     int newX = player.x + dx;
     int newY = player.y + dy;
 
-    if (maps[mapIndex][newY][newX] != '#' && !isOccupiedByEnemy(newX, newY) && maps[mapIndex][newY][newX + 1] != '#' && !isOccupiedByEnemy(newX + 1, newY)) {
+    // Verifica colisão com o tanque somente no mapa 2
+    int colideComTanque = 0;
+    if (mapIndex == 2) {
+        int tanqueX = tanque.x - bossWidth / 2;
+        int tanqueY = tanque.y - bossHeight / 2;
+
+        colideComTanque = (newX >= tanqueX && newX < tanqueX + bossWidth &&
+                           newY >= tanqueY && newY < tanqueY + bossHeight) ||
+                          (newX + 1 >= tanqueX && newX + 1 < tanqueX + bossWidth &&
+                           newY >= tanqueY && newY < tanqueY + bossHeight);
+    }
+
+    if (maps[mapIndex][newY][newX] != '#' &&
+        !isOccupiedByEnemy(newX, newY) &&
+        maps[mapIndex][newY][newX + 1] != '#' &&
+        !isOccupiedByEnemy(newX + 1, newY) &&
+        !colideComTanque) {
+
         screenGotoxy(player.x, player.y);
         printf(" ");
 
         player.x = newX;
         player.y = newY;
 
-        if (mapIndex==0 && (player.x == 53 || player.x == 52) && player.y == 3) { // Verificando a coleta da arma
+        // Lógica de coleta de arma (como antes)
+        if (mapIndex == 0 && (player.x == 53 || player.x == 52) && player.y == 3) {
             player.hasWeapon = 1;
             player.currentWeapon = 0;
             player.ammo = MAX_AMMO;
@@ -491,7 +524,7 @@ void movePlayer(int dx, int dy) {
             printf(" ");
         }
 
-        if (mapIndex==1 && (player.x == 28 || player.x == 27) && player.y == 10) { // Verificando a coleta da arma
+        if (mapIndex == 1 && (player.x == 28 || player.x == 27) && player.y == 10) {
             player.hasShotgun = 1;
             player.currentWeapon = 1;
             player.ammo = MAX_AMMO;
@@ -499,38 +532,35 @@ void movePlayer(int dx, int dy) {
             printf(" ");
         }
 
+        // Verifica se o jogador coletou um drop
         for (int i = 0; i < MAX_ENEMIES; i++) {
-            if (drops[i].active && (drops[i].x == player.x || drops[i].x == player.x + 1) && drops[i].y == player.y) {
-                if (player.mask == 0){
+            if (drops[i].active &&
+               (drops[i].x == player.x || drops[i].x == player.x + 1) &&
+                drops[i].y == player.y) {
+
+                if (player.mask == 0) {
                     if (drops[i].type == 1 && player.clips < 3) {
                         player.clips++;
                     } else if (drops[i].type == 2 && player.health < 3) {
                         player.health++;
                     }
-                    drops[i].active = 0;
-                    screenGotoxy(drops[i].x, drops[i].y);
-                    printf(" ");
-                }
-                if (player.mask == 1){
+                } else if (player.mask == 1) {
                     if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
                         player.clips++;
                     } else if (drops[i].type == 2 && player.health < PLAYER_MAX_HEALTH) {
                         player.health++;
                     }
-                    drops[i].active = 0;
-                    screenGotoxy(drops[i].x, drops[i].y);
-                    printf(" ");
-                }
-                if (player.mask == 2){
+                } else if (player.mask == 2) {
                     if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
                         player.clips++;
                     } else if (drops[i].type == 2 && player.health < 3) {
                         player.health++;
                     }
-                    drops[i].active = 0;
-                    screenGotoxy(drops[i].x, drops[i].y);
-                    printf(" ");
                 }
+
+                drops[i].active = 0;
+                screenGotoxy(drops[i].x, drops[i].y);
+                printf(" ");
             }
         }
     }
@@ -621,9 +651,9 @@ void moveEnemies() {
                     }
                 }
             }
-            if (enemies[i].moves == 4) {
+            if (enemies[i].moves == 3) {
                 enemyShoot(i, enemies[i].px, enemies[i].py);  // Chama a função para o tiro
-                enemies[i].cooldown = 10;
+                enemies[i].cooldown = 5;
                 enemies[i].moves = 0;  // Reseta
                 enemies[i].playerDetected = 0;    // Reseta
             }
@@ -675,133 +705,6 @@ void moveEnemies() {
     drawEnemies();
 }
 
-void bossShoot(int direction) {
-    int startX = tanque.x;
-    int startY = tanque.y;
-    int range = 30;
-    char shotChar;
-
-    // Configuração de cor para o tiro
-    screenSetColor(RED, BLACK);
-
-    // Disparo nas quatro direções conforme o tipo
-    for (int i = 1; i <= range; i++) {
-        // Tiros horizontais e verticais
-        if (direction == 1) {
-            // Direita
-            int xRight = startX + i;
-            if (xRight >= 0 && xRight < MAP_WIDTH && maps[mapIndex][startY][xRight] != '#') {
-                screenGotoxy(xRight, startY);
-                printf("-");
-                fflush(stdout);
-                if ((xRight == player.x || xRight == player.x + 1) && startY == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-
-            // Esquerda
-            int xLeft = startX - i;
-            if (xLeft >= 0 && xLeft < MAP_WIDTH && maps[mapIndex][startY][xLeft] != '#') {
-                screenGotoxy(xLeft, startY);
-                printf("-");
-                fflush(stdout);
-                if ((xLeft == player.x || xLeft == player.x + 1) && startY == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-
-            // Cima
-            int yUp = startY - i;
-            if (yUp >= 0 && yUp < MAP_HEIGHT && maps[mapIndex][yUp][startX] != '#') {
-                screenGotoxy(startX, yUp);
-                printf("|");
-                fflush(stdout);
-                if ((startX == player.x || startX == player.x + 1) && yUp == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-
-            // Baixo
-            int yDown = startY + i;
-            if (yDown >= 0 && yDown < MAP_HEIGHT && maps[mapIndex][yDown][startX] != '#') {
-                screenGotoxy(startX, yDown);
-                printf("|");
-                fflush(stdout);
-                if ((startX == player.x || startX == player.x + 1) && yDown == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-        }
-
-        // Tiros diagonais
-        else if (direction == 2) {
-            // Diagonal principal (\)
-            int xRightDown = startX + i;
-            int yRightDown = startY + i;
-            if (xRightDown >= 0 && xRightDown < MAP_WIDTH && yRightDown >= 0 && yRightDown < MAP_HEIGHT && maps[mapIndex][yRightDown][xRightDown] != '#') {
-                screenGotoxy(xRightDown, yRightDown);
-                printf("\\");
-                fflush(stdout);
-                if ((xRightDown == player.x || xRightDown == player.x + 1) && yRightDown == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-
-            int xLeftUp = startX - i;
-            int yLeftUp = startY - i;
-            if (xLeftUp >= 0 && xLeftUp < MAP_WIDTH && yLeftUp >= 0 && yLeftUp < MAP_HEIGHT && maps[mapIndex][yLeftUp][xLeftUp] != '#') {
-                screenGotoxy(xLeftUp, yLeftUp);
-                printf("\\");
-                fflush(stdout);
-                if ((xLeftUp == player.x || xLeftUp == player.x + 1) && yLeftUp == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-
-            // Diagonal secundária (/)
-            int xRightUp = startX + i;
-            int yRightUp = startY - i;
-            if (xRightUp >= 0 && xRightUp < MAP_WIDTH && yRightUp >= 0 && yRightUp < MAP_HEIGHT && maps[mapIndex][yRightUp][xRightUp] != '#') {
-                screenGotoxy(xRightUp, yRightUp);
-                printf("/");
-                fflush(stdout);
-                if ((xRightUp == player.x || xRightUp == player.x + 1) && yRightUp == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-
-            int xLeftDown = startX - i;
-            int yLeftDown = startY + i;
-            if (xLeftDown >= 0 && xLeftDown < MAP_WIDTH && yLeftDown >= 0 && yLeftDown < MAP_HEIGHT && maps[mapIndex][yLeftDown][xLeftDown] != '#') {
-                screenGotoxy(xLeftDown, yLeftDown);
-                printf("/");
-                fflush(stdout);
-                if ((xLeftDown == player.x || xLeftDown == player.x + 1) && yLeftDown == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-        }
-
-        usleep(5000);  // Pequeno atraso entre cada tiro
-    }
-
-    // Redesenha o mapa após o disparo
-    screenDrawMap(mapIndex);
-    drawPlayer();
-    drawEnemies();
-    drawDrops();
-    drawBoss(tanque.x, tanque.y);
-    drawBossHealthBar();
-}
-
 void tripleBossShoot(int direction) {
     int startX = tanque.x;
     int startY = tanque.y;
@@ -826,6 +729,112 @@ void tripleBossShoot(int direction) {
         case 4:  // Diagonal secundária (/)
             dx1 = 1; dy1 = -1; bulletChar = '/';
             dx2 = -1; dy2 = 1;
+            break;
+        case 5:  // Spread em quatro direções ortogonais (direita, esquerda, cima e baixo)
+            screenSetColor(RED, BLACK);
+            for (int i = 1; i <= range; i++) {
+                // Tiros na direção direita (um central e dois laterais)
+                int xDirCentral = startX + i;
+                int yDirLateral1 = startY - 1;
+                int yDirLateral2 = startY + 1;
+
+                if (xDirCentral >= 0 && xDirCentral < MAP_WIDTH) {
+                    if (maps[mapIndex][startY][xDirCentral] != '#') {
+                        screenGotoxy(xDirCentral, startY);
+                        printf("%c", '-');
+                        fflush(stdout);
+                        if (xDirCentral == player.x && startY == player.y) { handlePlayerHit(); break; }
+                    }
+                    if (yDirLateral1 >= 0 && yDirLateral1 < MAP_HEIGHT && maps[mapIndex][yDirLateral1][xDirCentral] != '#') {
+                        screenGotoxy(xDirCentral, yDirLateral1);
+                        printf("%c", '-');
+                        fflush(stdout);
+                        if (xDirCentral == player.x && yDirLateral1 == player.y) { handlePlayerHit(); break; }
+                    }
+                    if (yDirLateral2 >= 0 && yDirLateral2 < MAP_HEIGHT && maps[mapIndex][yDirLateral2][xDirCentral] != '#') {
+                        screenGotoxy(xDirCentral, yDirLateral2);
+                        printf("%c", '-');
+                        fflush(stdout);
+                        if (xDirCentral == player.x && yDirLateral2 == player.y) { handlePlayerHit(); break; }
+                    }
+                }
+
+                // Tiros na direção esquerda (um central e dois laterais)
+                int xEsqCentral = startX - i;
+
+                if (xEsqCentral >= 0 && xEsqCentral < MAP_WIDTH) {
+                    if (maps[mapIndex][startY][xEsqCentral] != '#') {
+                        screenGotoxy(xEsqCentral, startY);
+                        printf("%c", '-');
+                        fflush(stdout);
+                        if (xEsqCentral == player.x && startY == player.y) { handlePlayerHit(); break; }
+                    }
+                    if (yDirLateral1 >= 0 && yDirLateral1 < MAP_HEIGHT && maps[mapIndex][yDirLateral1][xEsqCentral] != '#') {
+                        screenGotoxy(xEsqCentral, yDirLateral1);
+                        printf("%c", '-');
+                        fflush(stdout);
+                        if (xEsqCentral == player.x && yDirLateral1 == player.y) { handlePlayerHit(); break; }
+                    }
+                    if (yDirLateral2 >= 0 && yDirLateral2 < MAP_HEIGHT && maps[mapIndex][yDirLateral2][xEsqCentral] != '#') {
+                        screenGotoxy(xEsqCentral, yDirLateral2);
+                        printf("%c", '-');
+                        fflush(stdout);
+                        if (xEsqCentral == player.x && yDirLateral2 == player.y) { handlePlayerHit(); break; }
+                    }
+                }
+
+                // Tiros na direção baixo (um central e dois laterais)
+                int yBaixoCentral = startY + i;
+                int xLateral1 = startX - 1;
+                int xLateral2 = startX + 1;
+
+                if (yBaixoCentral >= 0 && yBaixoCentral < MAP_HEIGHT) {
+                    if (maps[mapIndex][yBaixoCentral][startX] != '#') {
+                        screenGotoxy(startX, yBaixoCentral);
+                        printf("%c", '|');
+                        fflush(stdout);
+                        if (startX == player.x && yBaixoCentral == player.y) { handlePlayerHit(); break; }
+                    }
+                    if (xLateral1 >= 0 && xLateral1 < MAP_WIDTH && maps[mapIndex][yBaixoCentral][xLateral1] != '#') {
+                        screenGotoxy(xLateral1, yBaixoCentral);
+                        printf("%c", '|');
+                        fflush(stdout);
+                        if (xLateral1 == player.x && yBaixoCentral == player.y) { handlePlayerHit(); break; }
+                    }
+                    if (xLateral2 >= 0 && xLateral2 < MAP_WIDTH && maps[mapIndex][yBaixoCentral][xLateral2] != '#') {
+                        screenGotoxy(xLateral2, yBaixoCentral);
+                        printf("%c", '|');
+                        fflush(stdout);
+                        if (xLateral2 == player.x && yBaixoCentral == player.y) { handlePlayerHit(); break; }
+                    }
+                }
+
+                // Tiros na direção cima (um central e dois laterais)
+                int yCimaCentral = startY - i;
+
+                if (yCimaCentral >= 0 && yCimaCentral < MAP_HEIGHT) {
+                    if (maps[mapIndex][yCimaCentral][startX] != '#') {
+                        screenGotoxy(startX, yCimaCentral);
+                        printf("%c", '|');
+                        fflush(stdout);
+                        if (startX == player.x && yCimaCentral == player.y) { handlePlayerHit(); break; }
+                    }
+                    if (xLateral1 >= 0 && xLateral1 < MAP_WIDTH && maps[mapIndex][yCimaCentral][xLateral1] != '#') {
+                        screenGotoxy(xLateral1, yCimaCentral);
+                        printf("%c", '|');
+                        fflush(stdout);
+                        if (xLateral1 == player.x && yCimaCentral == player.y) { handlePlayerHit(); break; }
+                    }
+                    if (xLateral2 >= 0 && xLateral2 < MAP_WIDTH && maps[mapIndex][yCimaCentral][xLateral2] != '#') {
+                        screenGotoxy(xLateral2, yCimaCentral);
+                        printf("%c", '|');
+                        fflush(stdout);
+                        if (xLateral2 == player.x && yCimaCentral == player.y) { handlePlayerHit(); break; }
+                    }
+                }
+
+                usleep(5000);  // Pequeno atraso entre cada rajada
+            }
             break;
     }
 
@@ -1004,13 +1013,15 @@ void moveBoss() {
         return;
     }
 
+    if (tanque.health <= 0) {
+        return;
+    }
+
     if (tanque.move == 1) {
         if (tanque.tick == 3 || tanque.tick == 5 || tanque.tick == 7) {
-            bossShoot(1);  // Disparo nas horizontais e verticais
-        } else if (tanque.tick == 4 || tanque.tick == 6 || tanque.tick == 8) {
-            bossShoot(2);  // Disparo nas diagonais
+            tripleBossShoot(5);
         } else if (tanque.tick == 9) {
-            tanque.cooldown = 5;
+            tanque.cooldown = 3;
             tanque.tick = 0;
             tanque.move = 2;
         }
@@ -1020,7 +1031,7 @@ void moveBoss() {
         if (tanque.tick == 3 ) {
             bossShockwave();
         } else if (tanque.tick == 4) {
-            tanque.cooldown = 5;
+            tanque.cooldown = 3;
             tanque.tick = 0;
             tanque.move = 3;
         }
@@ -1036,7 +1047,7 @@ void moveBoss() {
         } else if (tanque.tick == 6 || tanque.tick == 10) {
             tripleBossShoot(4);  // Disparo nas diagonais
         } else if (tanque.tick == 12) {
-            tanque.cooldown = 5;
+            tanque.cooldown = 3;
             tanque.tick = 0;
             tanque.move = 1;
         }
@@ -1102,23 +1113,24 @@ void playerAttack() {
     showAttackFeedback();
 
     if (mapIndex == 2) {
-        // Verifica se o ataque atingiu a área do Boss Tanque
-        if (abs(tanque.x - player.x) <= 2 && abs(tanque.y - player.y) <= 1) {
-            // Verifica se o jogador está dentro da área do tanque
-            if (player.x >= tanque.x - bossWidth / 2 && player.x <= tanque.x + bossWidth / 2 &&
-                player.y >= tanque.y - bossHeight / 2 && player.y <= tanque.y + bossHeight / 2) {
-                tanque.health -= 1;  // Ajuste o dano conforme necessário
-                if (tanque.health <= 0) {
-                    tanque.health = 0;
-                    // Ação quando o Boss Tanque morre
-                }
+        // Verifica se o jogador está dentro da área de colisão do Boss Tanque
+        if ((((player.x == tanque.x - 5 || player.x + 1 == tanque.x - 5) || player.x == tanque.x + 5) &&
+     player.y >= tanque.y - 2 && player.y <= tanque.y + 2) ||
+    ((player.y == tanque.y - 2 || player.y == tanque.y + 2) &&
+     player.x >= tanque.x - 5 && player.x <= tanque.x + 5)) {
+            // Reduz a vida do tanque
+            tanque.health -= 1;  // Ajuste o dano conforme necessário
+            if (tanque.health <= 0) {
+                tanque.health = 0;
+                // Ação quando o Boss Tanque morre
             }
-        }
+            }
     }
 
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) continue;
 
+        // Verifica se o ataque atinge algum inimigo próximo
         if (abs(enemies[i].x - player.x) <= 2 && abs(enemies[i].y - player.y) <= 1) {
             screenGotoxy(enemies[i].x, enemies[i].y);
             printf(" ");
@@ -1132,6 +1144,7 @@ void playerAttack() {
             updateScore(100, 1);
         }
     }
+
     screenGotoxy(player.x, player.y);
     drawPlayer();
 
@@ -1141,6 +1154,7 @@ void playerAttack() {
     drawEnemies();
     drawGun();
     drawDrops();
+
     if (mapIndex == 2) {
         drawBoss(tanque.x, tanque.y);
         drawBossHealthBar();
