@@ -7,4 +7,10 @@ void displayOpeningArt();
  
 void displayEndGame(char *nome, int tamanho);
 
+void gameover();
+
+void printScoreboardArt();
+
+void printCreditsArt();
+
 #endif /* __MENUS_H__ */
