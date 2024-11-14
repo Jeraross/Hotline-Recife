@@ -404,15 +404,24 @@ void drawDrops() {
 }
 
 void drawDoor() {
+  	if (mapIndex == 2) {
+	if (tanque.health > 0) return;
+    screenGotoxy(porta_x, porta_y);
+    screenSetColor(COLOR_DOOR, BLACK);
+    printf("🚪");
+    fflush(stdout);
+  	} else if (mapIndex == 1 || mapIndex == 0) {
     if (enemies_dead < 10) return;
     screenGotoxy(porta_x, porta_y);
     screenSetColor(COLOR_DOOR, BLACK);
     printf("🚪");
     fflush(stdout);
+	}
 }
 
+
 int doorVerify() {
-    if (enemies_dead >= 10 && (player.x == porta_x || player.x + 1 == porta_x) && player.y == porta_y) {
+    if (((enemies_dead >= 10 && (player.x == porta_x || player.x + 1 == porta_x) && player.y == porta_y)) || ((tanque.health <= 0 && (player.x == porta_x || player.x + 1 == porta_x) && player.y == porta_y))) {
         mapIndex++;
         enemies_dead = 0;
         if (mapIndex >= NUM_MAPS) {
