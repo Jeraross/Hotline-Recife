@@ -14,20 +14,37 @@
 #define MAX_CAR_ENEMIES 15
 #define MAP_START_Y 1
 
-#define COLOR_FLOOR LIGHTGRAY
+#define DEFAULT_MOVE_INTERVAL 600
+#define TICK_RATE 10
+
+#define SPEED_MOON 2
+#define SPEED_CLOUDS 20
+#define SPEED_CAR_ENEMIES 60
+#define SPEED_TRAFFIC_LANES 50
+
+#define COLOR_FLOOR DARKGRAY
 #define COLOR_SKY BLACK
+#define COLOR_CLOUDS WHITE
+#define COLOR_STARS LIGHTGRAY
 #define COLOR_PLAYER GREEN
-#define COLOR_ENEMY MAGENTA
+#define COLOR_ENEMY1 RED
+#define COLOR_ENEMY2 BROWN 
+#define COLOR_ENEMY3 BLUE
+#define COLOR_ENEMY4 MAGENTA
+#define COLOR_ENEMY5 LIGHTRED
+#define COLOR_ENEMY6 CYAN
 #define COLOR_TRAFFIC_LANE YELLOW
 #define COLOR_MOON YELLOW
-#define COLOR_CLOUDS WHITE
+
+const int enemy_colors[] = {COLOR_ENEMY1, COLOR_ENEMY2, COLOR_ENEMY3, COLOR_ENEMY4, COLOR_ENEMY5, COLOR_ENEMY6};
+#define NUM_ENEMY_COLORS 6
 
 char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
     {
-        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "________________________________________________________________________________",
+        "cccccc!@cccccccccc@cccccccc!cccccccccc@ccccccc!cc@ccccccccc@c!ccccccccc!ccccc@cc",
+        "ccc!cccccc@cccccccc!ccccc@cccc!cccc!ccccc@c@ccccc!cccccccc!ccccccccc@ccccccccc!c",
+        "cc@ccccccccc!cccccc@ccc!ccccccccccccc@cccc!cccccccccccc@cccccccccccc!ccc@ccccccc",
+        "--------------------------------------------------------------------------------",
         "                                                                      ",
         "                                                                      ",
         "                                                                      ",
@@ -39,8 +56,7 @@ char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
         "                                                                      ",
         "                                                                      ",
         "                                                                      ",
-        "________________________________________________________________________________",
-
+        "--------------------------------------------------------------------------------",
     }
 };
 
@@ -53,7 +69,12 @@ Carplayer car_player = {7, MAP_START_Y + 4};
 typedef struct {
     int x, y;
     int active;
+    int color;
 } Carenemy;
+
+int getRandomColor() {
+    return enemy_colors[rand() % NUM_ENEMY_COLORS];
+}
 
 Carenemy car_enemies[MAX_CAR_ENEMIES] = {0};
 
@@ -67,6 +88,8 @@ Moon moon = {0};
 typedef struct {
     int x, y;
     int active;
+    char trail[5];
+    int trailIndex;
 } Clouds;
 
 Clouds clouds[MAX_CLOUDS] = {0};
@@ -76,11 +99,12 @@ typedef struct {
     int active;
 } Trafficlane;
 
-Trafficlane traffic_lanes[MAX_TRAFFIC_LANES] = {{4,7,1},{12,7,1},{20,7,1},{28,7,1},{36,7,1},{44,7,1},{52,7,1},{60,7,1},{68,7,1},{76,7,1}};
+Trafficlane traffic_lanes[MAX_TRAFFIC_LANES] = {{5,7,1},{15,7,1},{25,7,1},{35,7,1},{45,7,1},{55,7,1},{65,7,1},{75,7,1}};
 
 int mapIndex = 0;
 
 void screenDrawMinigameMap(int mapIndex);
+void drawBorders();
 void drawMoon();
 void drawClouds();
 void drawTrafficLane();
@@ -101,23 +125,24 @@ int main() {
     srand(time(NULL));
     screenInit(0);
     keyboardInit();
-    timerInit(25);
+    timerInit(TICK_RATE);
 
     int running = 1;
 
-    int moon_velocity = 0;
-
+    int spawn_car_enemy_counter = 0;
     int spawn_clouds_counter = 0;
-    int spawn_clouds_choice = 0;
-    int clouds_velocity = 0;
-
-    int spawn_car_counter = 0;
-    int spawn_car_choice = 0;
-    int car_velocity = 0;
-
     int spawn_traffic_lane_counter = 0;
 
+    int spawn_car_enemy_choice = 0;
+    int spawn_clouds_choice = 0;
+
+    int move_interval_car_enemy = 0;
+    int move_interval_clouds = 0;
+    int move_interval_moon = 0;
+    int move_interval_traffic_lanes = 0;
+
     screenDrawMinigameMap(mapIndex);
+    drawBorders();
     drawCarplayer();
 
     while (running) {
@@ -134,36 +159,39 @@ int main() {
 
         if (timerTimeOver()) {
 
-            car_velocity += 25;
-
-            if(car_velocity >= 50){
-                moveCarenemy();
-                car_velocity = 0;
-            }
-
             spawnMoon();
-            drawMoon();
 
-            moveTrafficLane();
-            drawTrafficLane();
+            move_interval_traffic_lanes += TICK_RATE;
 
-            moon_velocity += 25;
+            if(move_interval_traffic_lanes >= DEFAULT_MOVE_INTERVAL/SPEED_TRAFFIC_LANES){
+                moveTrafficLane();
+                move_interval_traffic_lanes = 0;
+            }
 
-            if (moon_velocity >= 500) {
+            move_interval_car_enemy += TICK_RATE;
+
+            if(move_interval_car_enemy >= DEFAULT_MOVE_INTERVAL/SPEED_CAR_ENEMIES){
+                moveCarenemy();
+                move_interval_car_enemy = 0;
+            }
+
+            move_interval_moon += TICK_RATE;
+
+            if (move_interval_moon >= DEFAULT_MOVE_INTERVAL/SPEED_MOON) {
                 moveMoon();
-                moon_velocity = 0;
+                move_interval_moon = 0;
             }
 
-            clouds_velocity += 25;
+            move_interval_clouds += TICK_RATE;
 
-            if (clouds_velocity >= 50) {
+            if (move_interval_clouds >= DEFAULT_MOVE_INTERVAL/SPEED_CLOUDS) {
                 moveClouds();
-                clouds_velocity = 0;
+                move_interval_clouds = 0;
             }
 
-            spawn_clouds_counter += 25;
+            spawn_clouds_counter += TICK_RATE;
 
-            if (spawn_clouds_choice < 4 && spawn_clouds_counter >= 600 && spawn_clouds_counter < 800) {
+            if (spawn_clouds_choice < 2 && spawn_clouds_counter >= 400 && spawn_clouds_counter < 600) {
                 if (rand() % 100 < 50) {  
                     spawnClouds();
                     spawn_clouds_counter = 0; 
@@ -172,7 +200,7 @@ int main() {
                 }
             }
 
-            if (spawn_clouds_choice < 8 && spawn_clouds_counter >= 800 && spawn_clouds_counter < 1000) {
+            if (spawn_clouds_choice < 4 && spawn_clouds_counter >= 600 && spawn_clouds_counter < 750) {
                 if (rand() % 100 < 50) {  
                     spawnClouds();
                     spawnClouds();
@@ -183,7 +211,7 @@ int main() {
                 }
             }
 
-            if (spawn_clouds_counter >= 1000) {
+            if (spawn_clouds_counter >= 750) {
                 spawnClouds();
                 spawnClouds();
                 spawnClouds();
@@ -191,43 +219,45 @@ int main() {
                 spawn_clouds_choice = 0;
             }
             
-            spawn_car_counter += 25;
+            spawn_car_enemy_counter += TICK_RATE;
 
-            if (spawn_car_choice < 4 && spawn_car_counter >= 300 && spawn_car_counter < 400) {
+            if (spawn_car_enemy_choice < 2 && spawn_car_enemy_counter >= 200 && spawn_car_enemy_counter < 300) {
                 if (rand() % 100 < 50) {  
                     spawnCarenemy();
-                    spawn_car_counter = 0; 
+                    spawn_car_enemy_counter = 0; 
                 } else {
-                    spawn_car_choice++;
+                    spawn_car_enemy_choice++;
                 }
             }
 
-            if (spawn_car_choice < 8 && spawn_car_counter >= 400 && spawn_car_counter < 500) {
+            if (spawn_car_enemy_choice < 4 && spawn_car_enemy_counter >= 300 && spawn_car_enemy_counter < 400) {
                 if (rand() % 100 < 50) {  
                     spawnCarenemy();
                     spawnCarenemy();
-                    spawn_car_counter = 0; 
-                    spawn_car_choice = 0;
+                    spawn_car_enemy_counter = 0; 
+                    spawn_car_enemy_choice = 0;
                 } else {
-                    spawn_car_choice++;
+                    spawn_car_enemy_counter++;
                 }
             }
 
-            if (spawn_car_counter >= 500) {
+            if (spawn_car_enemy_counter >= 500) {
                 spawnCarenemy();
                 spawnCarenemy();
                 spawnCarenemy();
-                spawn_car_counter = 0; 
-                spawn_car_choice = 0;
+                spawn_car_enemy_counter = 0; 
+                spawn_car_enemy_counter = 0;
             }
 
-            spawn_traffic_lane_counter += 25;
+            spawn_traffic_lane_counter += TICK_RATE;
 
             if (spawn_traffic_lane_counter >= 200) {
                 spawnTrafficLane();
                 spawn_traffic_lane_counter = 0; 
             }
 
+            drawTrafficLane();
+            drawMoon();
             
         }
 
@@ -256,6 +286,31 @@ void checkCollision() {
     }
 }
 
+void addCloudTrail(Clouds *cloud, char newChar) {
+    cloud->trail[cloud->trailIndex] = newChar;
+    cloud->trailIndex = (cloud->trailIndex + 1) % 5;
+}
+
+void printCloudTrailTail(Clouds *cloud) {
+    int tailIndex = (cloud->trailIndex + 1) % 5;
+    char tailChar = cloud->trail[tailIndex];
+
+    const char *symbolToPrint;
+    if (tailChar == 'C') {
+        symbolToPrint = " ";  
+    } else if (tailChar == '!') {
+        symbolToPrint = "⋆";  
+    } else if (tailChar == '@') {
+        symbolToPrint = "✶";  
+    } else {
+        symbolToPrint = " ";   
+    }
+
+    screenGotoxy(cloud->x + 5, cloud->y);
+    printf("%s", symbolToPrint); 
+}
+
+
 void screenDrawMinigameMap(int mapIndex) {
     screenClear();
     
@@ -269,18 +324,37 @@ void screenDrawMinigameMap(int mapIndex) {
                     screenSetColor(COLOR_SKY, BLACK);
                     printf(" ");
                     break;
-                case '_':
+                case '!':
+                    screenSetColor(COLOR_STARS, BLACK);
+                    printf("⋆");
+                    break;
+                case '@':
+                    screenSetColor(COLOR_STARS, BLACK);
+                    printf("✶");
+                    break;
+                case '-':
                     screenSetColor(COLOR_SKY, BLACK);
                     printf("-");
                     break;
                 default:
-                    screenSetColor(COLOR_FLOOR, BLACK);
+                    screenSetColor(COLOR_FLOOR, DARKGRAY);
                     printf(" ");
                     break;
             }
         }
     }
     screenSetColor(WHITE, BLACK);
+    fflush(stdout);
+}
+
+void drawBorders(){
+    for (int i = 0; i < 1; i++) {
+        screenSetColor(COLOR_FLOOR, BLACK);
+        screenGotoxy(1, MAP_START_Y + 3);
+        printf("________________________________________________________________________________");
+        screenGotoxy(1, MAP_HEIGHT);
+        printf("________________________________________________________________________________");
+    }
     fflush(stdout);
 }
 
@@ -333,7 +407,7 @@ void drawCarplayer() {
 void drawCarenemy() {
     for (int i = 0; i < MAX_CAR_ENEMIES; i++) {
         if (car_enemies[i].active) {
-            screenSetColor(COLOR_ENEMY, BLACK);
+            screenSetColor(car_enemies[i].color, BLACK);
             screenGotoxy(car_enemies[i].x, car_enemies[i].y);
             printf(" _︵,");
             screenGotoxy(car_enemies[i].x, car_enemies[i].y + 1);
@@ -366,8 +440,15 @@ void moveClouds() {
         if (clouds[i].active) {
             screenSetColor(COLOR_CLOUDS, WHITE);
             screenGotoxy(clouds[i].x, clouds[i].y);
-            printf("       ");
+            printf("     ");
+            
             clouds[i].x--;
+            
+            char currentChar = maps[mapIndex][clouds[i].y-1][clouds[i].x];
+            
+            addCloudTrail(&clouds[i], currentChar);
+
+            printCloudTrailTail(&clouds[i]);
 
             if (clouds[i].x < 0) {
                 clouds[i].x = 0;
@@ -470,11 +551,10 @@ void spawnCarenemy() {
     for (int i = 0; i < MAX_CAR_ENEMIES; i++) {
         if (!car_enemies[i].active) {
             car_enemies[i].x = MAP_WIDTH - 5;
-            car_enemies[i].y = MAP_START_Y + 4 + (rand() % 4)*3; 
+            car_enemies[i].y = MAP_START_Y + 4 + (rand() % 4)*3;
+            car_enemies[i].color = getRandomColor(); 
             car_enemies[i].active = 1;
             break;
         }
     }
 }
-
-
