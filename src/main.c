@@ -7,7 +7,7 @@
 #include "timer.h"
 
 #define NUM_MAPS 1
-#define MAP_HEIGHT 15
+#define MAP_HEIGHT 16
 #define MAP_WIDTH 80
 #define MAX_CLOUDS 100
 #define MAX_TRAFFIC_LANES 100
@@ -22,7 +22,7 @@
 #define COLOR_MOON YELLOW
 #define COLOR_CLOUDS WHITE
 
-char maps[NUM_MAPS][MAP_HEIGHT + 1][MAP_WIDTH + 1] = {
+char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
     {
         "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -39,6 +39,8 @@ char maps[NUM_MAPS][MAP_HEIGHT + 1][MAP_WIDTH + 1] = {
         "                                                                      ",
         "                                                                      ",
         "                                                                      ",
+        "________________________________________________________________________________",
+
     }
 };
 
@@ -111,6 +113,7 @@ int main() {
 
     int spawn_car_counter = 0;
     int spawn_car_choice = 0;
+    int car_velocity = 0;
 
     int spawn_traffic_lane_counter = 0;
 
@@ -131,7 +134,12 @@ int main() {
 
         if (timerTimeOver()) {
 
-            moveCarenemy();
+            car_velocity += 25;
+
+            if(car_velocity >= 50){
+                moveCarenemy();
+                car_velocity = 0;
+            }
 
             spawnMoon();
             drawMoon();
@@ -182,7 +190,7 @@ int main() {
                 spawn_clouds_counter = 0; 
                 spawn_clouds_choice = 0;
             }
-
+            
             spawn_car_counter += 25;
 
             if (spawn_car_choice < 4 && spawn_car_counter >= 300 && spawn_car_counter < 400) {
@@ -263,7 +271,7 @@ void screenDrawMinigameMap(int mapIndex) {
                     break;
                 case '_':
                     screenSetColor(COLOR_SKY, BLACK);
-                    printf("_");
+                    printf("-");
                     break;
                 default:
                     screenSetColor(COLOR_FLOOR, BLACK);
@@ -292,7 +300,7 @@ void drawClouds(){
         if (clouds[i].active) {
             screenSetColor(COLOR_CLOUDS, WHITE);
             screenGotoxy(clouds[i].x, clouds[i].y);
-            printf("☁︎·°｡⋆");
+            printf("·☁︎°｡");
         }
     }
     fflush(stdout);
