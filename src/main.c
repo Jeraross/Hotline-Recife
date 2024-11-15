@@ -63,6 +63,7 @@ typedef struct {
     int currentWeapon; // 0 para pistola, 1 para shotgun
     int mask; //0 = Galo, 1 = Leao, 2 = Timbu
     char name[20];
+    int power;
 } Player;
 
 
@@ -115,6 +116,12 @@ int lastdx = 0, lastdy = 0;
 
 int porta_x, porta_y;
 int mapIndex;
+
+int powerCooldown = 60000;           // Cooldown de 60 segundos em milissegundos
+int powerActivatedTime = -1;         // Tempo em que o poder foi ativado
+int printActivatedTime = -1;         // Tempo em que a mensagem foi exibida
+int printCooldown = 5000;            // Duração de 5 segundos para exibir a mensagem
+
 
 // Array de músicas, cada mapa terá sua música correspondente
 const char* mapMusicFiles[NUM_MAPS] = {
@@ -170,6 +177,8 @@ void add_score(struct winners **head, char *nome, int score);
 void loadScoreboard();
 void printScoreboard();
 void writeScoreboard();
+void activePower();
+void showCooldownMessage(long currentTime);
 
 
 int main() {
@@ -199,6 +208,7 @@ int main() {
     player.currentWeapon = -1;
     if (player.mask == 1) {
         player.health = PLAYER_MAX_HEALTH;
+        player.power = 1;
     }
     else player.health = 3;
 
@@ -210,6 +220,11 @@ int main() {
         SDL_Quit();
         return 1;
     }
+
+    if (player.mask == 2){
+      player.power = 2;
+    }
+
     screenDrawMap(mapIndex);
     drawPlayer();
     drawEnemies();
@@ -273,9 +288,8 @@ int main() {
                         player.currentWeapon = 1 - player.currentWeapon; // Alterna entre 0 e 1
                     }
                     break;
-
-                case 'q':
-                  //poderes!!!
+                case 'q': activePower(); break;
+                case '.':
                     keyboardDestroy();
                     screenDestroy();
                     return 0;
@@ -303,6 +317,8 @@ int main() {
         spawnEnemies();
         drawComboHUD();  // Atualiza o HUD do combo com cor e tempo
         drawHUD();
+        long tempo_atual = getTimeDiff();
+        showCooldownMessage(tempo_atual);
         drawDrops();
 
         // Verificar se o tempo do combo acabou
@@ -428,13 +444,24 @@ bool switchMusic(Mix_Music** currentMusic, const char* newMusicFile, int loops) 
 void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
     screenSetColor(WHITE, BLACK);
+
+    // Define o nome da arma atual do jogador
     const char *currentWeaponName = (!player.hasWeapon && !player.hasShotgun) ? "       " :
                                     (player.currentWeapon == 0) ? "Pistola" :
                                     (player.currentWeapon == 1) ? "Shotgun" : "       ";
 
-    printf("Vida: %d  Munição: %d/%d  Score: %d  Arma: %s",
-           player.health, player.ammo, player.clips, score, currentWeaponName);
+    // Calcula o tempo restante do cooldown
+    int cooldownRemaining = 0;
+    if (powerActivatedTime != -1) {
+        long currentTime = getTimeDiff();
+        cooldownRemaining = (powerCooldown - (currentTime - powerActivatedTime)) / 1000;
+        if (cooldownRemaining < 0) cooldownRemaining = 0;  // Evita valores negativos
+    }
+
+    printf("Vida: %d  Munição: %d/%d  Score: %d  Arma: %s  Cooldown Poder: %d seg",
+           player.health, player.ammo, player.clips, score, currentWeaponName, cooldownRemaining);
 }
+
 
 
 void drawComboHUD() {
@@ -1898,4 +1925,50 @@ void writeScoreboard() {
     }
 
     fclose(list);
+}
+
+void activePower() {
+    long currentTime = getTimeDiff(); // Obtém o tempo atual em milissegundos
+
+    // Verifica se o poder está no cooldown
+    if (powerActivatedTime != -1 && (currentTime - powerActivatedTime) < powerCooldown) {
+        showCooldownMessage(currentTime);  // Chama a função para mostrar e apagar a mensagem
+        return;
+    }
+
+    // Se o poder não está em cooldown, ativa-o e configura o tempo de ativação
+    if (player.power == 1) {
+        for (int i = 0; i < MAX_ENEMIES; i++) {
+            if (enemies[i].alive) {
+                enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
+            }
+        }
+
+        // Define o momento exato em que o poder foi ativado
+        powerActivatedTime = currentTime;
+
+        // Exibe a mensagem de ativação e reseta `printActivatedTime`
+        screenGotoxy(MAP_WIDTH + 2, MAP_HEIGHT/2);
+        printf("Poder ativado! Cooldown de 60 segundos iniciado.\n");
+        printActivatedTime = currentTime; // Armazena o momento da impressão
+    }
+}
+
+void showCooldownMessage(long currentTime) {
+    // Exibe a mensagem de cooldown
+    screenGotoxy(MAP_WIDTH + 2, MAP_HEIGHT / 2 + 1);
+
+    // Armazena o momento da exibição da mensagem, caso ainda não esteja configurado
+    if (printActivatedTime == -1) {
+        printActivatedTime = currentTime;
+    }
+
+    // Verifica se já passaram 5 segundos para limpar a mensagem
+    if ((currentTime - printActivatedTime) >= printCooldown) {
+        screenGotoxy(MAP_WIDTH + 2, MAP_HEIGHT / 2);
+        printf("                                                       "); // Limpa a linha
+        screenGotoxy(MAP_WIDTH + 2, MAP_HEIGHT / 2 + 1);
+        printf("                                                       "); // Limpa a linha
+        printActivatedTime = -1;  // Reseta o tempo de ativação da impressão
+    }
 }
