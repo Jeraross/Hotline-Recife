@@ -1,15 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 #include "screen.h"
 #include "keyboard.h"
 #include "timer.h"
 #include "map.h"
 #include "menus.h"
+#include "minigame.h"
 #include "characters.h"
-#include <locale.h>
 
 #define MAP_WIDTH 55
 #define MAP_HEIGHT 21
@@ -113,33 +116,56 @@ int lastdx = 0, lastdy = 0;
 int porta_x, porta_y;
 int mapIndex;
 
+// Array de músicas, cada mapa terá sua música correspondente
+const char* mapMusicFiles[NUM_MAPS] = {
+    "music/LAPERV.mp3",  // Música para o mapa 0
+    "music/LAPERV.mp3",  // Música para o mapa 1
+    "music/ROLLER.mp3"   // Música para o mapa 2
+};
+
+// Música do Menu e Minigame
+const char* menuMusicFile = "music/MENU.mp3";  // Música do menu
+const char* minigameMusicFile = "music/MINIGAME.mp3";  // Música do minigame
+const char* GAMEOVERR = "music/SADGAME.mp3";  // Música do menu
+
+int initSDL();
+bool switchMusic(Mix_Music** currentMusic, const char* newMusicFile, int loops);
+
 void drawHUD();
-void drawComboHUD();
+
 void drawPlayer();
-void drawEnemies();
-void drawBoss(int x, int y);
-void drawDrops();
-void drawDoor();
-int doorVerify();
-void spawnDrop(int x, int y);
-void updateScore(int points, int isEnemyKill);
-int isOccupiedByEnemy(int x, int y);
 void movePlayer(int dx, int dy);
-void moveEnemies();
-void drawBossHealthBar();
-void moveBoss();
-void bossShoot(int direction);
-void tripleBossShoot(int direction);
-void spawnEnemies();
 void showAttackFeedback();
 void playerAttack();
 void throwWeapon(int lastdx, int lastdy);
 void playerShoot(int dx, int dy);
 void playerShotgunShoot(int dx, int dy);
-void handlePlayerHit();
-void enemyShoot(int enemyIndex, int plx, int ply);
 void reload();
+
+void drawEnemies();
+void moveEnemies();
+void spawnEnemies();
+void enemyShoot(int enemyIndex, int plx, int ply);
+int isOccupiedByEnemy(int x, int y);
+
+void drawBoss(int x, int y);
+void moveBoss();
+void bossShoot(int direction);
+void tripleBossShoot(int direction);
 void bossShockwave();
+void drawBossHealthBar();
+
+void handlePlayerHit();
+
+void drawDrops();
+void spawnDrop(int x, int y);
+
+void drawComboHUD();
+void updateScore(int points, int isEnemyKill);
+
+void drawDoor();
+int doorVerify();
+
 void add_score(struct winners **head, char *nome, int score);
 void loadScoreboard();
 void printScoreboard();
@@ -147,17 +173,26 @@ void writeScoreboard();
 
 
 int main() {
+    if (initSDL() != 0) {
+        return -1;
+    }
+
+    Mix_Music* currentMusic = NULL;
     keyboardInit();
     screenInit(0);
     srand(time(NULL));
 
+    if (!switchMusic(&currentMusic, menuMusicFile, -1)) {
+        Mix_CloseAudio();
+        SDL_Quit();
+        return 1;
+    }
     displayMenu();
     player.mask = navigate_masks();
-    setlocale(LC_ALL, "en_US.UTF-8");
 
     displayOpeningArt();
 
-    mapIndex = 2;
+    mapIndex = 0;
     player.ammo = MAX_AMMO;
     player.hasWeapon = 0;
     player.hasShotgun = 0;
@@ -170,14 +205,16 @@ int main() {
     if (player.mask == 0) player.clips = 3;
     else player.clips = 1;
 
+    if (!switchMusic(&currentMusic, mapMusicFiles[mapIndex], -1)) {
+        Mix_CloseAudio();
+        SDL_Quit();
+        return 1;
+    }
     screenDrawMap(mapIndex);
     drawPlayer();
     drawEnemies();
     drawHUD();
     drawDrops();
-    if (mapIndex == 2) {
-      drawBoss(tanque.x, tanque.y);
-    }
 
     lastEnemyMove = clock();
     lastEnemySpawn = time(NULL);
@@ -187,6 +224,21 @@ int main() {
     enemies_dead = 0;
 
     while (1) {
+        if (player.health <= 0) {
+            if (!switchMusic(&currentMusic, GAMEOVERR, 0)) {
+                Mix_CloseAudio();
+                SDL_Quit();
+                return 1;
+            }
+            char final;
+            gameover();
+            scanf("%c", &final);
+            if (final == '\n') {
+                screenDestroy();
+                keyboardDestroy();
+                exit(0);
+            }
+        }
         if (keyhit()) {
             char key = readch();
 
@@ -259,13 +311,28 @@ int main() {
         }
 
         drawDoor();
+
         int verifyDoor = doorVerify();
+
         if (verifyDoor == 1){
             // Reinicia o array de inimigos
             memset(enemies, 0, sizeof(enemies)); // Zera todos os inimigos
 
             // Reinicia o array de drops
             memset(drops, 0, sizeof(drops)); // Zera todos os drops
+
+            if (!switchMusic(&currentMusic, minigameMusicFile, 0)) {
+                Mix_CloseAudio();
+                SDL_Quit();
+                return 1;
+            }
+            startMinigame();
+
+            if (!switchMusic(&currentMusic, mapMusicFiles[mapIndex], -1)) {
+                Mix_CloseAudio();
+                SDL_Quit();
+                return 1;
+            }
 
             // Reinicia o jogador e o cenário
             player.x = 2;
@@ -286,12 +353,78 @@ int main() {
             }
         }
         else if (verifyDoor == 2){
+            if (!switchMusic(&currentMusic, menuMusicFile, 0)) {
+                Mix_CloseAudio();
+                SDL_Quit();
+                return 1;
+            }
+            screenClear();
+            displayEndGame(player.name, sizeof(player.name));
+            printf("Parabéns, %s!\n", player.name);
+
+            loadScoreboard();
+            add_score(&head, player.name, score);
+            printScoreboard(head);
+            writeScoreboard();
+
+            printf("Pressione Enter para continuar...\n");
+            getchar();
+
+            printCreditsArt();
+            printf("Pressione Enter para sair...\n");
+            getchar();
+
             keyboardDestroy();
             screenDestroy();
             return 0;
         }
     }
 }
+
+int initSDL() {
+    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+        return -1;
+    }
+
+    if (Mix_Init(MIX_INIT_MP3) != MIX_INIT_MP3) {
+        return -1;
+    }
+
+    if (Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 4096) < 0) {
+        return -1;
+    }
+
+    // Configura volume para um valor mais baixo
+    Mix_VolumeMusic(MIX_MAX_VOLUME / 6);
+
+    return 0;
+}
+
+// Função para trocar a música
+bool switchMusic(Mix_Music** currentMusic, const char* newMusicFile, int loops) {
+    // Se uma música está tocando, para e libera a atual
+    if (*currentMusic) {
+        Mix_HaltMusic();
+        Mix_FreeMusic(*currentMusic);
+        *currentMusic = NULL;
+    }
+
+    // Carrega a nova música
+    *currentMusic = Mix_LoadMUS(newMusicFile);
+    if (!*currentMusic) {
+        return false;
+    }
+
+    // Reproduz a nova música
+    if (Mix_PlayMusic(*currentMusic, loops) == -1) {
+        Mix_FreeMusic(*currentMusic);
+        *currentMusic = NULL;
+        return false;
+    }
+
+    return true;
+}
+
 void drawHUD() {
     screenGotoxy(0, MAP_HEIGHT);
     screenSetColor(WHITE, BLACK);
@@ -308,7 +441,7 @@ void drawComboHUD() {
     if (combo < 2) {
         // Limpa o HUD do combo quando o combo termina
         screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
-        printf("                                 "); // Apaga o texto do combo
+        printf("                      "); // Apaga o texto do combo
         fflush(stdout);
         return;
     }
@@ -319,7 +452,7 @@ void drawComboHUD() {
 
     screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
     int remainingTime = 5 - (int)difftime(time(NULL), comboStartTime);
-    printf("COMBO X%d    TIMER %d    +%d ", combo, remainingTime, pontosGanhos);
+    printf("COMBO X%d    TIMER %d ", combo, remainingTime);
 
     fflush(stdout);
 }
@@ -418,10 +551,10 @@ void drawDrops() {
                 screenSetColor(COLOR_DROP_HEALTH, BLACK);
                 printf("H"); // Drop de vida
             } else if (drops[i].type == 3) {
-                screenSetColor(WHITE, BLACK);
+                screenSetColor(YELLOW, BLACK);
                 printf("S"); // Drop de shotgun
             } else if (drops[i].type == 4) {
-                screenSetColor(WHITE, BLACK);
+                screenSetColor(YELLOW, BLACK);
                 printf("P"); // Drop de pistola
             }
 
@@ -455,23 +588,6 @@ int doorVerify() {
         enemies_dead = 0;
 
         if (mapIndex >= NUM_MAPS) {
-            screenClear();
-            displayEndGame(player.name, sizeof(player.name));
-            printf("Parabéns, %s!\n", player.name);
-
-
-            loadScoreboard();
-            add_score(&head, player.name, score);
-            printScoreboard(head);
-            writeScoreboard();
-
-            printf("Pressione Enter para continuar...\n");
-            getchar(); 
-
-            printCreditsArt();
-            printf("Pressione Enter para sair...\n");
-            getchar();
-
             return 2;
         } else {
             return 1;
@@ -606,11 +722,19 @@ void movePlayer(int dx, int dy) {
                 if (drops[i].type == 3) {
                   player.hasShotgun = 1;
                   player.currentWeapon = 1;
-                  player.ammo = MAX_AMMO;
+                  if (player.ammo == MAX_AMMO && ((player.mask == 0) ? player.clips < 3 : player.clips > MAX_CLIPS)) {
+                    player.clips++;
+                  } else if (player.ammo < MAX_AMMO) {
+                    player.ammo = MAX_AMMO;
+                  }
                 } else if (drops[i].type == 4) {
                   player.hasWeapon = 1;
                   player.currentWeapon = 0;
-                  player.ammo = MAX_AMMO;
+                  if (player.ammo == MAX_AMMO && ((player.mask == 0) ? player.clips < 3 : player.clips > MAX_CLIPS)) {
+                    player.clips++;
+                  } else if (player.ammo < MAX_AMMO) {
+                    player.ammo = MAX_AMMO;
+                  }
                 }
 
                 drops[i].active = 0;
@@ -724,7 +848,7 @@ void moveEnemies() {
             if (!enemies[i].playerDetected) {
                 // Verificação Horizontal (esquerda e direita)
                 for (int x = enemies[i].x + 1; x < MAP_WIDTH && maps[mapIndex][enemies[i].y][x] != '#'; x++) {
-                    if ((x == player.x || x == player.x + 1) && enemies[i].y == player.y) {
+                    if (x == player.x && enemies[i].y == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -732,7 +856,7 @@ void moveEnemies() {
                     }
                 }
                 for (int x = enemies[i].x - 1; x >= 0 && maps[mapIndex][enemies[i].y][x] != '#'; x--) {
-                    if ((x == player.x || x == player.x + 1) && enemies[i].y == player.y) {
+                    if (x == player.x && enemies[i].y == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -742,7 +866,7 @@ void moveEnemies() {
 
                 // Verificação Vertical (acima e abaixo)
                 for (int y = enemies[i].y + 1; y < MAP_HEIGHT && maps[mapIndex][y][enemies[i].x] != '#'; y++) {
-                    if ((enemies[i].x == player.x || enemies[i].x == player.x + 1) && y == player.y) {
+                    if (enemies[i].x == player.x && y == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -750,7 +874,7 @@ void moveEnemies() {
                     }
                 }
                 for (int y = enemies[i].y - 1; y >= 0 && maps[mapIndex][y][enemies[i].x] != '#'; y--) {
-                    if ((enemies[i].x == player.x || enemies[i].x == player.x + 1) && y == player.y) {
+                    if (enemies[i].x == player.x && y == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -1084,9 +1208,6 @@ void handlePlayerHit() {
     drawPlayer();
     player.health--;
     drawHUD();
-    if (player.health <= 0) {
-        gameover();
-    }
 }
 
 void drawBossHealthBar() {
@@ -1306,7 +1427,7 @@ void throwWeapon(int lastdx, int lastdy) {
     char rotation[] = {'|', '/', '-', '\\'};
     int rotationIndex = 0;
 
-    screenSetColor(WHITE, BLACK); // Cor para a animação do lançamento
+    screenSetColor(YELLOW, BLACK); // Cor para a animação do lançamento
 
     for (int step = 0; step < range; step++) {
         // Verifica se o lançamento ultrapassa os limites do mapa ou atinge uma parede
