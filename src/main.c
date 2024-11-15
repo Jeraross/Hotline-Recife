@@ -9,8 +9,8 @@
 #define NUM_MAPS 1
 #define MAP_HEIGHT 16
 #define MAP_WIDTH 80
-#define MAX_CLOUDS 100
-#define MAX_TRAFFIC_LANES 100
+#define MAX_CLOUDS 20
+#define MAX_TRAFFIC_LANES 21
 #define MAX_CAR_ENEMIES 15
 #define MAP_START_Y 1
 
