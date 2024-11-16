@@ -20,10 +20,10 @@
 #define MAX_ENEMIES 8
 #define MAX_AMMO 5
 #define PLAYER_MAX_HEALTH 5
-#define ENEMY_RESPAWN_INTERVAL 3
+#define ENEMY_RESPAWN_INTERVAL 2
 #define ENEMY_COOLDOWN_PERIOD 5  // Tempo que o inimigo fica parado ao colidir com o jogador
 #define MAX_CLIPS 1
-#define DROP_CHANCE 30
+#define DROP_CHANCE 35
 #define COMBO_HUD_X 0
 #define COMBO_HUD_Y MAP_HEIGHT + 1
 #define BOSS_HEALTH_BAR_LENGTH 50  // Comprimento da barra de vida do chefe (ajuste conforme o design desejado)
@@ -214,7 +214,10 @@ int main() {
     }
     else player.health = 3;
 
-    if (player.mask == 0) player.clips = 3;
+    if (player.mask == 0) {
+        player.clips = 3;
+        powerCooldown = 10000;
+    }
     else player.clips = 1;
 
     if (!switchMusic(&currentMusic, mapMusicFiles[mapIndex], -1)) {
@@ -359,6 +362,7 @@ int main() {
 
             powerActivatedTime = -1; // Reseta o tempo de ativação do poder
             printActivatedTime = -1; // Reseta o tempo de exibição da mensagem
+            ghostMode = 0;
 
             if (!switchMusic(&currentMusic, mapMusicFiles[mapIndex], -1)) {
                 Mix_CloseAudio();
@@ -1341,7 +1345,6 @@ void moveBoss() {
             tanque.move = 1;
         }
         tanque.tick += 1;
-
     }
 
     drawBoss(tanque.x, tanque.y);
@@ -1878,7 +1881,7 @@ void bossShockwave() {
                 }
             }
         }
-        usleep(25000); // Atraso para o efeito de expansão
+        usleep(12500); // Atraso para o efeito de expansão
         screenDrawMap(mapIndex);
         drawPlayer();
         drawEnemies();
@@ -2001,7 +2004,11 @@ void activePower() {
             drawEnemies();
             drawDrops();
         }
-        tanque.cooldown = ENEMY_COOLDOWN_PERIOD * 2;
+        if (mapIndex == 2) {
+            tanque.cooldown = ENEMY_COOLDOWN_PERIOD * 2;
+            drawBoss(tanque.x, tanque.y);
+            drawBossHealthBar();
+        }
         for (int i = 0; i < MAX_ENEMIES; i++) {
             if (enemies[i].alive) {
                 enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD * 2;
