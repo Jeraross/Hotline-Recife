@@ -102,6 +102,7 @@ time_t lastEnemySpawn;
 time_t lastDropSpawn;
 time_t comboStartTime;
 clock_t lastEnemyMove;
+clock_t lastAttackTime = 0;
 
 int score = 0, combo = 1, pontosGanhos = 0, px = 0, py = 0, enemies_dead;
 
@@ -259,7 +260,12 @@ int main() {
                 case 's': movePlayer(0, 1); break;
                 case 'a': movePlayer(-1, 0); break;
                 case 'd': movePlayer(1, 0); break;
-                case ' ': playerAttack(); break;
+                case ' ':
+                    if (((double)(clock() - lastAttackTime) / CLOCKS_PER_SEC) >= 0.3) { // Verifica o delay de 0.3 segundos
+                        playerAttack();
+                        lastAttackTime = clock(); // Atualiza o tempo do último ataque
+                    }
+                    break;
                 case 'h':
                   if (player.hasWeapon || player.hasShotgun) {
                     if (player.currentWeapon == 0) {
