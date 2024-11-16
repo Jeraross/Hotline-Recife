@@ -2,6 +2,7 @@
 #include "screen.h"
 #include "timer.h"
 #include "map.h"
+#include <stdio.h>
 
 
 #define MAP_WIDTH 55
@@ -29,6 +30,8 @@
 #define COLOR_COMBO1 CYAN
 #define COLOR_COMBO2 GREEN
 #define COLOR_COMBO3 MAGENTA
+
+extern int ghostMode;
 
 // Definindo a matriz de mapas
 char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
@@ -113,7 +116,12 @@ void screenDrawMap(int mapIndex) {
             switch(cell) {
                 case '#':
                     screenSetColor(COLOR_WALL, BLACK);
-                    printf("▓");
+                    if (ghostMode) {
+                        printf("░");
+                    } else {
+                        printf("▓");
+                    }
+
                     break;
                 default:
                     screenSetColor(COLOR_FLOOR, BLACK);

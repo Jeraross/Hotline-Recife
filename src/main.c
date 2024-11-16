@@ -20,7 +20,7 @@
 #define MAX_ENEMIES 8
 #define MAX_AMMO 5
 #define PLAYER_MAX_HEALTH 5
-#define ENEMY_RESPAWN_INTERVAL 2
+#define ENEMY_RESPAWN_INTERVAL 3
 #define ENEMY_COOLDOWN_PERIOD 5  // Tempo que o inimigo fica parado ao colidir com o jogador
 #define MAX_CLIPS 1
 #define DROP_CHANCE 30
@@ -63,7 +63,6 @@ typedef struct {
     int currentWeapon; // 0 para pistola, 1 para shotgun
     int mask; //0 = Galo, 1 = Leao, 2 = Timbu
     char name[20];
-    int power;
 } Player;
 
 
@@ -117,11 +116,13 @@ int lastdx = 0, lastdy = 0;
 int porta_x, porta_y;
 int mapIndex;
 
-int powerCooldown = 60000;           // Cooldown de 60 segundos em milissegundos
+int powerCooldown = 20000;           // Cooldown de 20 segundos em milissegundos
 int powerActivatedTime = -1;         // Tempo em que o poder foi ativado
 int printActivatedTime = -1;         // Tempo em que a mensagem foi exibida
-int printCooldown = 5000;            // Duração de 5 segundos para exibir a mensagem
 
+int ghostMode = 0;               // Indica se o jogador está em modo fantasma
+long ghostModeActivatedTime = -1; // Tempo de ativação do modo fantasma
+int ghostModeDuration = 5000;    // Duração do modo fantasma em milissegundos
 
 // Array de músicas, cada mapa terá sua música correspondente
 const char* mapMusicFiles[NUM_MAPS] = {
@@ -178,7 +179,6 @@ void loadScoreboard();
 void printScoreboard();
 void writeScoreboard();
 void activePower();
-void showCooldownMessage(long currentTime);
 
 
 int main() {
@@ -197,6 +197,7 @@ int main() {
         return 1;
     }
     displayMenu();
+
     player.mask = navigate_masks();
 
     displayOpeningArt();
@@ -206,9 +207,9 @@ int main() {
     player.hasWeapon = 0;
     player.hasShotgun = 0;
     player.currentWeapon = -1;
+
     if (player.mask == 1) {
         player.health = PLAYER_MAX_HEALTH;
-        player.power = 1;
     }
     else player.health = 3;
 
@@ -219,10 +220,6 @@ int main() {
         Mix_CloseAudio();
         SDL_Quit();
         return 1;
-    }
-
-    if (player.mask == 2){
-      player.power = 2;
     }
 
     screenDrawMap(mapIndex);
@@ -295,7 +292,18 @@ int main() {
                     return 0;
             }
         }
-
+        if (ghostMode && getTimeDiff() - ghostModeActivatedTime >= ghostModeDuration) {
+            ghostMode = 0; // Desativa o modo fantasma
+            ghostModeActivatedTime = -1; // Reseta o tempo de ativação
+            screenDrawMap(mapIndex);
+            drawPlayer();
+            drawEnemies();
+            drawDrops();
+            if (mapIndex == 2) {
+                drawBoss(tanque.x, tanque.y);
+                drawBossHealthBar();
+            }
+        }
         if (((clock() - lastEnemyMove) / (double) CLOCKS_PER_SEC >= 0.5) && mapIndex == 0 ) {
             moveEnemies();
             lastEnemyMove = clock();
@@ -318,7 +326,6 @@ int main() {
         drawComboHUD();  // Atualiza o HUD do combo com cor e tempo
         drawHUD();
         long tempo_atual = getTimeDiff();
-        showCooldownMessage(tempo_atual);
         drawDrops();
 
         // Verificar se o tempo do combo acabou
@@ -343,6 +350,9 @@ int main() {
                 return 1;
             }
             startMinigame();
+
+            powerActivatedTime = -1; // Reseta o tempo de ativação do poder
+            printActivatedTime = -1; // Reseta o tempo de exibição da mensagem
 
             if (!switchMusic(&currentMusic, mapMusicFiles[mapIndex], -1)) {
                 Mix_CloseAudio();
@@ -458,7 +468,7 @@ void drawHUD() {
         if (cooldownRemaining < 0) cooldownRemaining = 0;  // Evita valores negativos
     }
 
-    printf("Vida: %d  Munição: %d/%d  Score: %d  Arma: %s  Cooldown Poder: %d seg",
+    printf("Vida: %d  Munição: %d/%d  Score: %d  Arma: %s  Poder: %d seg ",
            player.health, player.ammo, player.clips, score, currentWeaponName, cooldownRemaining);
 }
 
@@ -479,7 +489,7 @@ void drawComboHUD() {
 
     screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
     int remainingTime = 5 - (int)difftime(time(NULL), comboStartTime);
-    printf("COMBO X%d    TIMER %d ", combo, remainingTime);
+    printf("COMBO X%d   TIMER %d ", combo, remainingTime);
 
     fflush(stdout);
 }
@@ -693,6 +703,9 @@ void movePlayer(int dx, int dy) {
     int newX = player.x + dx;
     int newY = player.y + dy;
 
+    lastdx = dx;
+    lastdy = dy;
+
     // Verifica colisão com o tanque somente no mapa 2
     int colideComTanque = 0;
     if (mapIndex == 2) {
@@ -705,9 +718,26 @@ void movePlayer(int dx, int dy) {
                            newY >= tanqueY && newY < tanqueY + bossHeight);
     }
 
-    if (maps[mapIndex][newY][newX] != '#' &&
+    if (ghostMode == 1) {
+        if ((maps[mapIndex][newY][newX] == '#') ||
+        (maps[mapIndex][newY][newX + 1] == '#') &&
+        !(maps[mapIndex][newY][newX] == maps[mapIndex][MAP_HEIGHT][MAP_WIDTH]) &&
+        !(maps[mapIndex][newY][newX + 1] == maps[mapIndex][MAP_HEIGHT][MAP_WIDTH]) &&
+        !(maps[mapIndex][newY][newX] == maps[mapIndex][1][1]) &&
+        !(maps[mapIndex][newY][newX + 1] == maps[mapIndex][1][1])) {
+            if (dx == -1) {
+                dx = -2;
+            }
+            newX += dx;
+            newY += dy;
+        } else if (maps[mapIndex][newY][newX + 1] == '#' && dx == 1) {
+            newX += 2;
+        }
+    }
+
+    if ((maps[mapIndex][newY][newX] != '#') &&
         !isOccupiedByEnemy(newX, newY) &&
-        maps[mapIndex][newY][newX + 1] != '#' &&
+        (maps[mapIndex][newY][newX + 1] != '#') &&
         !isOccupiedByEnemy(newX + 1, newY) &&
         !colideComTanque) {
 
@@ -716,9 +746,6 @@ void movePlayer(int dx, int dy) {
 
         player.x = newX;
         player.y = newY;
-
-        lastdx = dx;
-        lastdy = dy;
 
         // Verifica se o jogador coletou um drop
         for (int i = 0; i < MAX_ENEMIES; i++) {
@@ -1434,7 +1461,7 @@ void throwWeapon(int lastdx, int lastdy) {
     int currentWeaponToThrow = player.currentWeapon;
 
     // Coordenadas iniciais de onde a arma será lançada
-    int x = player.x + lastdx;
+    int x = (lastdx == 1) ? (player.x + lastdx + 1) : (player.x + lastdx);
     int y = player.y + lastdy;
     int range = 10; // Alcance máximo do lançamento da arma
 
@@ -1556,7 +1583,7 @@ void playerShoot(int dx, int dy) {
                 tanque.health -= 1;  // Ajuste conforme necessário
                 if (tanque.health <= 0) {
                     tanque.health = 0;
-                    // Se o Boss Tanque morrer, você pode fazer alguma ação, como ele desaparecer
+
                 }
                 break;
                 }
@@ -1930,45 +1957,158 @@ void writeScoreboard() {
 void activePower() {
     long currentTime = getTimeDiff(); // Obtém o tempo atual em milissegundos
 
-    // Verifica se o poder está no cooldown
-    if (powerActivatedTime != -1 && (currentTime - powerActivatedTime) < powerCooldown) {
-        showCooldownMessage(currentTime);  // Chama a função para mostrar e apagar a mensagem
-        return;
+    // Verifica se o poder está em cooldown
+    if (powerActivatedTime != -1 && currentTime - powerActivatedTime < powerCooldown) {
+        return; // Poder está em cooldown, então não faz nada
     }
 
     // Se o poder não está em cooldown, ativa-o e configura o tempo de ativação
-    if (player.power == 1) {
+    if (player.mask == 1) {
+        int range = 5;
+        int startX = player.x;
+        int startY = player.y;
+
+        for (int r = 1; r < range; r++) {
+        // Expande ao redor do boss
+            for (int dx = -r; dx <= r; dx++) {
+                int x1 = startX + dx;
+                int y1 = startY + (r - abs(dx));
+                int y2 = startY - (r - abs(dx));
+
+            // Verifica os limites do mapa antes de desenhar o shockwave
+                if (x1 >= 0 && x1 < MAP_WIDTH && y1 >= 0 && y1 < MAP_HEIGHT && maps[mapIndex][y1][x1] != '#') {
+                    screenGotoxy(x1, y1);
+                    screenSetColor(WHITE, BLACK);
+                    printf("*"); // Símbolo do shockwave
+                    fflush(stdout);
+                }
+                if (x1 >= 0 && x1 < MAP_WIDTH && y2 >= 0 && y2 < MAP_HEIGHT && maps[mapIndex][y2][x1] != '#') {
+                    screenGotoxy(x1, y2);
+                    screenSetColor(WHITE, BLACK);
+                    printf("*");
+                    fflush(stdout);
+                }
+            }
+            usleep(12500); // Atraso para o efeito de expansão
+            screenDrawMap(mapIndex);
+            drawPlayer();
+            drawEnemies();
+            drawDrops();
+        }
+        tanque.cooldown = ENEMY_COOLDOWN_PERIOD * 2;
         for (int i = 0; i < MAX_ENEMIES; i++) {
             if (enemies[i].alive) {
-                enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD;
+                enemies[i].cooldown = ENEMY_COOLDOWN_PERIOD * 2;
             }
         }
-
         // Define o momento exato em que o poder foi ativado
         powerActivatedTime = currentTime;
 
-        // Exibe a mensagem de ativação e reseta `printActivatedTime`
-        screenGotoxy(MAP_WIDTH + 2, MAP_HEIGHT/2);
-        printf("Poder ativado! Cooldown de 60 segundos iniciado.\n");
-        printActivatedTime = currentTime; // Armazena o momento da impressão
+} else if (player.mask == 0) {
+    int dashRange = 20; // Distância máxima da investida
+    int dashColors[] = {RED, GREEN, BLUE}; // Gradiente de cores
+    int colorCount = sizeof(dashColors) / sizeof(dashColors[0]);
+    int currentX = player.x;
+    int currentY = player.y;
+
+    char dashChar; // Inicializa como seta para direita
+
+    // Define o símbolo com base na direção
+    if (lastdx > 0 && lastdy == 0) dashChar = '>'; // Direita
+    else if (lastdx < 0 && lastdy == 0) dashChar = '<'; // Esquerda
+    else if (lastdx == 0 && lastdy > 0) dashChar = 'v'; // Baixo
+    else if (lastdx == 0 && lastdy < 0) dashChar = '^'; // Cima
+
+    // Executa a investida
+    for (int step = 1; step <= dashRange; step++) {
+        int nextX = currentX + lastdx * step;
+        int nextY = currentY + lastdy * step;
+
+        // Verifica se colidiu com uma parede ou está fora dos limites do mapa
+        if (nextX < 0 || nextX >= MAP_WIDTH || nextY < 0 || nextY >= MAP_HEIGHT || maps[mapIndex][nextY][nextX] == '#' || maps[mapIndex][nextY][nextX + 1] == '#') {
+            break; // Encerra o dash ao colidir
+        }
+
+        // Atualiza a posição do jogador
+        player.x = nextX;
+        player.y = nextY;
+
+        // Deixa um rastro colorido no caminho
+        int colorIndex = step % colorCount; // Alterna entre as cores
+        screenGotoxy(nextX, nextY);
+        screenSetColor(dashColors[colorIndex], BLACK);
+        printf("%c", dashChar);
+        fflush(stdout);
+
+        // Verifica se atinge o Boss (mapIndex == 2)
+        if (mapIndex == 2) {
+            if ((((player.x == tanque.x - 5 || player.x + 1 == tanque.x - 5) || player.x == tanque.x + 5) &&
+                 player.y >= tanque.y - 2 && player.y <= tanque.y + 2) ||
+                ((player.y == tanque.y - 2 || player.y == tanque.y + 2) &&
+                 player.x >= tanque.x - 5 && player.x <= tanque.x + 5)) {
+                tanque.health -= 1; // Reduz a vida do tanque
+                if (tanque.health <= 0) {
+                    tanque.health = 0;
+                }
+                break;
+            }
+        }
+
+        // Verifica se atinge algum inimigo
+        for (int i = 0; i < MAX_ENEMIES; i++) {
+            if (!enemies[i].alive) continue;
+
+            if (abs(enemies[i].x - player.x) <= 2 && abs(enemies[i].y - player.y) <= 1) {
+                screenGotoxy(enemies[i].x, enemies[i].y);
+                printf(" ");
+                enemies[i].alive = 0;
+                enemies_dead++;
+
+                // Gera drop
+                int dropChance = rand() % 100;
+                if (dropChance < DROP_CHANCE) {
+                    spawnDrop(enemies[i].x, enemies[i].y);
+                }
+
+                // Atualiza pontuação
+                int pontosGanhos = 100 * combo;
+                updateScore(pontosGanhos, 1);
+            }
+        }
+
+        usleep(12500); // Atraso para suavizar o efeito do dash
     }
-}
 
-void showCooldownMessage(long currentTime) {
-    // Exibe a mensagem de cooldown
-    screenGotoxy(MAP_WIDTH + 2, MAP_HEIGHT / 2 + 1);
+    // Desenha o jogador na posição final
+    screenGotoxy(player.x, player.y);
+    drawPlayer();
 
-    // Armazena o momento da exibição da mensagem, caso ainda não esteja configurado
-    if (printActivatedTime == -1) {
-        printActivatedTime = currentTime;
+    // Atualiza o mapa após o dash
+    screenDrawMap(mapIndex);
+    drawPlayer();
+    drawEnemies();
+    drawDrops();
+
+    // Atualiza o Boss se no mapa correto
+    if (mapIndex == 2) {
+        drawBoss(tanque.x, tanque.y);
+        drawBossHealthBar();
     }
 
-    // Verifica se já passaram 5 segundos para limpar a mensagem
-    if ((currentTime - printActivatedTime) >= printCooldown) {
-        screenGotoxy(MAP_WIDTH + 2, MAP_HEIGHT / 2);
-        printf("                                                       "); // Limpa a linha
-        screenGotoxy(MAP_WIDTH + 2, MAP_HEIGHT / 2 + 1);
-        printf("                                                       "); // Limpa a linha
-        printActivatedTime = -1;  // Reseta o tempo de ativação da impressão
+    // Define o tempo de ativação
+    powerActivatedTime = currentTime;
+
+    } else if (player.mask == 2) {
+        ghostMode = 1;
+        screenDrawMap(mapIndex);
+        drawPlayer();
+        drawEnemies();
+        drawDrops();
+        if (mapIndex == 2) {
+            drawBoss(tanque.x, tanque.y);
+            drawBossHealthBar();
+        }
+        ghostModeActivatedTime = currentTime; // Registra o tempo de ativação
+        powerActivatedTime = currentTime;
     }
 }
