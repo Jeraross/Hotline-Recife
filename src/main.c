@@ -191,6 +191,8 @@ int main() {
     player.mask = navigate_masks();
 
     displayOpeningArt();
+    
+    displayOpeningArt2();
 
     mapIndex = 0;
     player.ammo = MAX_AMMO;

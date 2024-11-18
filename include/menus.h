@@ -4,6 +4,8 @@
 void displayMenu();
 
 void displayOpeningArt();
+
+void displayOpeningArt2();
  
 void displayEndGame(char *nome, int tamanho);
 

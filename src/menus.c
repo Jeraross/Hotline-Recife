@@ -112,6 +112,59 @@ void displayOpeningArt() {
 }
 }
 
+void displayOpeningArt2() {
+    screenClear();
+    char *ascii_art[] = {
+    "",
+    "",
+    "⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⠤⠤⠤⢄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
+    "⠀⠀⠀⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⢚⣕⣦⣿⣿⣿⣶⣆⡑⢦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
+    "⠀⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⠟⠉⠀⠉⠉⠉⠉⠉⠉⠳⣵⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
+    "⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡿⠘⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⡄⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
+    "⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣷⠀⢀⣤⣤⣤⡀⢀⣤⣤⣤⡀⢹⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
+    "⠀⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣹⠀⠹⠟⣿⠿⠂⢘⡿⢿⣿⢷⢸⡉⣳⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
+    "⠀⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠇⠀⠀⠀⡤⠆⠀⢀⠳⣆⡀⠀⠨⢇⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
+    "⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠺⡷⢀⣿⣃⣉⣻⣛⣻⣮⣿⠃⣠⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀                                           Fique ligado, agente",
+    "⠀⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⢀⠻⠛⠤⢤⠤⡶⢋⢷⡃⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀                                        Existem 3 tipos de inimigos.",
+    "⠀⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⢿⣄⠁⠀⠉⡉⠄⣩⠞⢻⢇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀                     E = Inimigo normal, se move normalmente e ataca corpo a corpo.",
+    "⠀⠀⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⡀⠻⣗⠦⣴⣴⠞⠉⢠⣿⣦⣑⠢⢄⡀⠀⠀⠀⠀⠀⠀⠀⠀                   C = Inimigo armado, se move normalmente mas tem arma para atirar.                ",
+    "⠀⠀⠀    ⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⢔⣪⣵⣾⠁⠀⢈⣿⡉⠀⠀⣰⣿⣿⣿⣿⣿⣶⣮⣑⣂⠤⢄⣀⠀⠀⠀               D = Inimigo armado e rápido, se move com o dobro de velocidade pode atirar.",
+    "⠀⠀    ⠀⠀⠀⠀⠀⣀⢤⣒⣭⣶⣾⣿⣿⣿⣿⠀⣴⣿⣿⣷⣄⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦⣕⢢⡀                               Ambos os inimigos armados tem chance de  ",
+    "⠀⠀    ⠀⠀⠀⢠⣾⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⠈⣿⣿⣿⠃⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⢣                               spawnarem com uma pistola ou uma shotgun ",
+    "⠀⠀    ⠀⢀⣮⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣴⣿⣿⣿⣾⣿⣿⣿⣭⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣹                                                                                    ",
+    "⠀    ⠀⠀⠀⡜⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟   ",
+    "    ⠀⠀⠀⢰⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡯                                          WASD para mover",
+    "⠀    ⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⡳                                          SPACE para atacar  ",
+    "⠀⠀    ⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⡏                              Se achar uma arma, use I,K,L,J para atirar  ",
+    "⠀    ⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⣻⣿⢿⣿⣿⣿⣿⡗⡇                                       T para trocar de arma",
+    "    ⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠡⠚⣉⡥⠾⣿⣿⣿⣿⡇⡇                                          R para recarregar",
+    "    ⠀⣿⣿⣿⣿⣿⣿⣿⠿⠻⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠃⣨⠖⢋⣡⠴⣾⣿⣿⣿⣿⣿⠁                                       H para jogar sua arma",
+    "    ⢸⣿⣿⣿⣿⣿⣿⠇⡀⠀⠀⠀⡽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣯⣤⣚⣡⣞⣫⣤⣶⣿⣿⣿⣿⣿⡻⠀                                          Q para ativar poder",
+    "    ⣾⣿⣿⣿⣿⣿⣿⣷⠀⠉⠆⠈⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢷⠃⠀        ",
+    "    ⢿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣿⣤⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢏⠏⠀⠀        ",
+    "    ⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢏⠎⠀⠀⠀                             Boa sorte, Agente. Recife nunca foi fácil.",
+    "    ⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡞⠀⠀⠀⠀                                   Pressione ENTER para continuar...    ",
+    "⠀    ⠈⠉⠉⠙⠛⢻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⡇⠀⠀⠀⠀                                    ",
+    "⠀⠀⠀    ⠀⠀⠀⢸⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⡇⠀⠀⠀⠀                               ",
+    "⠀⠀⠀    ⠀⠀⠀⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢱⠀⠀⠀                                             ASS: João Campos    ",
+    "⠀⠀    ⠀⠀⠀⢀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⠆⠀⠀⠀",
+    };
+
+    for (int i = 0; i < sizeof(ascii_art) / sizeof(ascii_art[0]); i++) {
+        printf("%s\n", ascii_art[i]);
+    }
+
+    while (1) {
+        if (keyhit()) {
+            char key = readch();
+            if (key == '\n' || key == '\r') {
+                screenClear();
+                break;
+            }
+        }
+}
+}
+
 void displayEndGame(char *nome, int tamanho) {
     char *ascii_art[] = {                           
 "        (                                    ",
