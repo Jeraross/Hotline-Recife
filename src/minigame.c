@@ -366,6 +366,11 @@ void screenDrawMinigameMap(int minimap) {
             }
         }
     }
+
+    screenGotoxy(0, MAP_H + MAP_START_Y + 1);
+    screenSetColor(WHITE, BLACK);
+    printf("Indo para a próxima missão...");
+
     screenSetColor(WHITE, BLACK);
     fflush(stdout);
 }
