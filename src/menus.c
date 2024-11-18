@@ -7,7 +7,6 @@
 void displayMenu() {
     screenClear();
 
-    // Array do ASCII art com cada caractere colorido
     char *ascii_art[] = {
         "",
         "",
@@ -44,12 +43,10 @@ void displayMenu() {
         "                      \x1b[33m$$$$$$$\x1b[0m                                                                    ",
     };
 
-    // Imprime o ASCII art com as cores configuradas
     for (int i = 0; i < sizeof(ascii_art) / sizeof(ascii_art[0]); i++) {
         printf("%s\n", ascii_art[i]);
     }
 
-    // Espera o usuário pressionar ENTER para continuar
     while (1) {
         if (keyhit()) {
             char key = readch();

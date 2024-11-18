@@ -7,7 +7,7 @@
 
 const char masks[3][38][150] = {
     {
-        "\033[35m",  // Magenta para a primeira arte
+        "\033[35m",
         "                                                       #*                                                                                        ",
         "                                                        #+*   #++                                                                                ",
         "                                                     #  %*=*  #++                                                                                ",
@@ -44,10 +44,10 @@ const char masks[3][38][150] = {
         "                ######%##+-+%##%%%%%%%%%%%##+-=%%%%##*--+#=:----=%*-=::::+#=:#*--*                                                               ",
         "              #%%%%%%%%%%%+-*%%%%%#%%%%%%%%%#*+%%%%#**#+---=--+=-=%#-::-=*####--+*                                                               ",
         "              #%%#+=+*##%%%*+#%%%%%%%%%%%%%%#%#%%%#****#*==++==+--%*=:--=#*###*#+*                                                               ",
-        "\033[0m",  // Reset color
+        "\033[0m",
     },
     {
-        "\033[32m",  // Verde para a segunda arte
+        "\033[32m",
         "                                    %%%                                                                                                          ",
         "                                  %%%%%%%           %%#%%           %%%%%                                                                        ",
         "                                  %%%#*+*#%    %###**++++***#%%%% #***#%%%                                                                       ",
@@ -84,10 +84,10 @@ const char masks[3][38][150] = {
         "             %%##%%%##+++##*+#%%*%#*+++*++#%%%%%%%#+*##=----==--##+--------+++++++++==                                                           ",
         "             %#*++++++*#**%#*+=---=##+++*+#%%%%%%%#+*#+------=--+#*=-------*+++++++++==                                                          ",
         "            %####%##*++++**+-------=##*++++*%%%%%%#+*#=----------+#=-------*++++++++++=*                                                         ",
-        "\033[0m",  // Reset color
+        "\033[0m",
     },
     {
-        "\033[34m",  // Azul para a terceira arte
+        "\033[34m", 
         "                 @@@%%@                                                                                                                          ",
         "                 @@@%+*@         +==+                                 *+:=                                                                       ",
         "                 @@@@++@       *+=::-+                              ====+=                                                                       ",
@@ -124,7 +124,7 @@ const char masks[3][38][150] = {
         "            =-=-------=+%@@@%@%+#@*-:-+-:::::-=-:++---=:::-+#-=*#%%%%%#@@@@@#=#++*%@%%@@@                                                        ",
         "            =+-------=--#@@@@%@%@%*::*-::::::--=%+::::::::--#@@@@@%%@%@@@@@@#=+%%#=*%@@@@                                                        ",
         "            -+-------+++%@@@@##=*%%+=-::::::=+%@#---==::---==@@@@@%%%@@@@@@@%*==+%@#+*@@@@                                                       ",
-        "\033[0m"  // Reset color
+        "\033[0m"
     }
 };
 
@@ -140,40 +140,32 @@ void print_mask(int mask_index) {
 
     fflush(stdout);
 }
-
-// Função principal que controla a navegação entre as máscaras
 int navigate_masks() {
     int current_mask = 0;
     char input;
 
-    // Exibe a máscara inicial
     print_mask(current_mask);
 
-    // Espera pela entrada do jogador para mudar a máscara
     while (1) {
-        // Lê a tecla pressionada
         if (keyhit()) {
             input = readch();
             if (input == 'a' || input == 'A') {
-                // Navega para a máscara anterior (circular)
                 current_mask = (current_mask - 1 + 3) % 3;
                 screenClear();
-                print_mask(current_mask);  // Atualiza a máscara na tela
+                print_mask(current_mask);
             } else if (input == 'd' || input == 'D') {
-                // Navega para a próxima máscara (circular)
                 current_mask = (current_mask + 1) % 3;
                 screenClear();
-                print_mask(current_mask);  // Atualiza a máscara na tela
+                print_mask(current_mask);
             } else if (input == '\n' || input == '\t') {
-                // Encerra a função e retorna a máscara escolhida
                 break;
             }
         }
 
-        usleep(100000); // Espera um pouco para evitar sobrecarga de CPU
+        usleep(100000);
     }
     screenDestroy();
     screenHideCursor();
 
-    return current_mask;  // Retorna a máscara escolhida
+    return current_mask;
 }

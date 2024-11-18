@@ -12,7 +12,7 @@
 #define MAX_AMMO 5
 #define PLAYER_MAX_HEALTH 5
 #define ENEMY_RESPAWN_INTERVAL 2
-#define ENEMY_COOLDOWN_PERIOD 5  // Tempo que o inimigo fica parado ao colidir com o jogador
+#define ENEMY_COOLDOWN_PERIOD 5
 #define MAX_CLIPS 2
 #define DROP_CHANCE 20
 #define COMBO_HUD_X 0
@@ -33,7 +33,6 @@
 
 extern int ghostMode;
 
-// Definindo a matriz de mapas
 char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
     {
         "#######################################################",
@@ -106,11 +105,10 @@ char maps[NUM_MAPS][MAP_HEIGHT][MAP_WIDTH] = {
     }
 };
 
-// Função que desenha o mapa
 void screenDrawMap(int mapIndex) {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
-            char cell = maps[mapIndex][y][x];  // Acessa o mapa específico usando mapIndex
+            char cell = maps[mapIndex][y][x];
             screenGotoxy(x, y);
 
             switch(cell) {
