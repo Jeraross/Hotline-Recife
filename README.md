@@ -15,6 +15,9 @@
 3. **Fase do Chefe**:
    - Enfrente o **tanque**, um chefe desafiador que exige estratégia e habilidade para derrotar.
 
+4. **Minigame**:
+   - Entre as transições das fases, há um minigame de tempo limitado que você controla um carro para desviar dos obstáculos.
+
 ---
 
 # Como Jogar:
