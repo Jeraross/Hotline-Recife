@@ -194,7 +194,7 @@ int main() {
     
     displayOpeningArt2();
 
-    mapIndex = 2;
+    mapIndex = 0;
     player.ammo = MAX_AMMO;
     player.hasWeapon = 0;
     player.hasShotgun = 0;
