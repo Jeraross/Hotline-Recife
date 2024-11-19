@@ -74,7 +74,7 @@ typedef struct {
     int alive;
     int cooldown;
     int type;
-    int moves; 
+    int ticks; 
     int playerDetected;
     int px, py;
 } Enemy;
@@ -194,7 +194,7 @@ int main() {
     
     displayOpeningArt2();
 
-    mapIndex = 0;
+    mapIndex = 2;
     player.ammo = MAX_AMMO;
     player.hasWeapon = 0;
     player.hasShotgun = 0;
@@ -515,7 +515,7 @@ void drawEnemies() {
             if (enemies[i].cooldown > 0) {
                 screenSetColor(COLOR_ENEMY_HIT, BLACK);
             }
-            else if (enemies[i].moves <= 4 && enemies[i].moves != 0 && (enemies[i].type == 2 || enemies[i].type == 1)) {
+            else if (enemies[i].ticks <= 4 && enemies[i].ticks != 0 && (enemies[i].type == 2 || enemies[i].type == 1)) {
                 screenSetColor(RED, BLACK);  
             }
             else {
@@ -700,109 +700,6 @@ int isOccupiedByEnemy(int x, int y) {
     return 0;
 }
 
-void movePlayer(int dx, int dy) {
-    int newX = player.x + dx;
-    int newY = player.y + dy;
-
-    lastdx = dx;
-    lastdy = dy;
-
-    
-    int colideComTanque = 0;
-    if (mapIndex == 2) {
-        int tanqueX = tanque.x - bossWidth / 2;
-        int tanqueY = tanque.y - bossHeight / 2;
-
-        colideComTanque = (newX >= tanqueX && newX < tanqueX + bossWidth &&
-                           newY >= tanqueY && newY < tanqueY + bossHeight) ||
-                          (newX + 1 >= tanqueX && newX + 1 < tanqueX + bossWidth &&
-                           newY >= tanqueY && newY < tanqueY + bossHeight);
-    }
-
-    if (ghostMode == 1) {
-        if ((maps[mapIndex][newY][newX] == '#') ||
-        (maps[mapIndex][newY][newX + 1] == '#') &&
-        !(maps[mapIndex][newY][newX] == maps[mapIndex][MAP_HEIGHT][MAP_WIDTH]) &&
-        !(maps[mapIndex][newY][newX + 1] == maps[mapIndex][MAP_HEIGHT][MAP_WIDTH]) &&
-        !(maps[mapIndex][newY][newX] == maps[mapIndex][1][1]) &&
-        !(maps[mapIndex][newY][newX + 1] == maps[mapIndex][1][1])) {
-            if (dx == -1) {
-                dx = -2;
-            }
-            newX += dx;
-            newY += dy;
-        } else if (maps[mapIndex][newY][newX + 1] == '#' && dx == 1) {
-            newX += 2;
-        }
-    }
-
-    if ((maps[mapIndex][newY][newX] != '#') &&
-        !isOccupiedByEnemy(newX, newY) &&
-        (maps[mapIndex][newY][newX + 1] != '#') &&
-        !isOccupiedByEnemy(newX + 1, newY) &&
-        !colideComTanque) {
-
-        screenGotoxy(player.x, player.y);
-        printf(" ");
-
-        player.x = newX;
-        player.y = newY;
-
-        
-        for (int i = 0; i < MAX_ENEMIES; i++) {
-            if (drops[i].active &&
-               (drops[i].x == player.x || drops[i].x == player.x + 1) &&
-                drops[i].y == player.y) {
-
-                if (player.mask == 0) {
-                    if (drops[i].type == 1 && player.clips < 3) {
-                        player.clips++;
-                    } else if (drops[i].type == 2 && player.health < 3) {
-                        player.health++;
-                    }
-                } else if (player.mask == 1) {
-                    if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
-                        player.clips++;
-                    } else if (drops[i].type == 2 && player.health < PLAYER_MAX_HEALTH) {
-                        player.health++;
-                    }
-                } else if (player.mask == 2) {
-                    if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
-                        player.clips++;
-                    } else if (drops[i].type == 2 && player.health < 3) {
-                        player.health++;
-                    }
-                }
-
-                if (drops[i].type == 3) {
-                  player.hasShotgun = 1;
-                  player.currentWeapon = 1;
-                  if (player.ammo == MAX_AMMO && ((player.mask == 0) ? player.clips < 3 : player.clips > MAX_CLIPS)) {
-                    player.clips++;
-                  } else if (player.ammo < MAX_AMMO) {
-                    player.ammo = MAX_AMMO;
-                  }
-                } else if (drops[i].type == 4) {
-                  player.hasWeapon = 1;
-                  player.currentWeapon = 0;
-                  if (player.ammo == MAX_AMMO && ((player.mask == 0) ? player.clips < 3 : player.clips > MAX_CLIPS)) {
-                    player.clips++;
-                  } else if (player.ammo < MAX_AMMO) {
-                    player.ammo = MAX_AMMO;
-                  }
-                }
-
-                drops[i].active = 0;
-                screenGotoxy(drops[i].x, drops[i].y);
-                printf(" ");
-            }
-        }
-    }
-
-    drawPlayer();
-    drawHUD();
-}
-
 void moveEnemies() {
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].alive) continue;
@@ -886,15 +783,15 @@ void moveEnemies() {
                 }
             }
 
-            if (enemies[i].moves == 3) {
+            if (enemies[i].ticks == 3) {
                 enemyShoot(i, enemies[i].px, enemies[i].py);  
                 enemies[i].cooldown = 5;
-                enemies[i].moves = 0;  
+                enemies[i].ticks = 0;  
                 enemies[i].playerDetected = 0;    
             }
             
             if (enemies[i].playerDetected) {
-                enemies[i].moves++;  
+                enemies[i].ticks++;  
             }
             if (enemies[i].playerDetected != 0) continue;
 
@@ -938,15 +835,15 @@ void moveEnemies() {
                 }
             }
 
-            if (enemies[i].moves == 3) {
+            if (enemies[i].ticks == 3) {
                 enemyShoot(i, enemies[i].px, enemies[i].py);  
                 enemies[i].cooldown = 5;
-                enemies[i].moves = 0;  
+                enemies[i].ticks = 0;  
                 enemies[i].playerDetected = 0;    
             }
             
             if (enemies[i].playerDetected) {
-                enemies[i].moves++;  
+                enemies[i].ticks++;  
             }
             if (enemies[i].playerDetected != 0) continue;
 
@@ -991,6 +888,250 @@ void moveEnemies() {
         }
     }
     drawEnemies();
+}
+void spawnEnemies() {
+    if (difftime(time(NULL), lastEnemySpawn) < ENEMY_RESPAWN_INTERVAL || mapIndex == 2) return;
+    int randomEnemy = rand() % 100;
+
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (!enemies[i].alive) {
+            int spawnX, spawnY;
+            do {
+                spawnX = rand() % MAP_WIDTH;
+                spawnY = rand() % MAP_HEIGHT;
+            } while (isOccupiedByEnemy(spawnX, spawnY) || abs(spawnX - player.x) < 5 || abs(spawnY - player.y) < 5 || maps[mapIndex][spawnY][spawnX] == '#' || spawnX == porta_x && spawnY == porta_y);
+
+            enemies[i].x = spawnX;
+            enemies[i].y = spawnY;
+
+            if (mapIndex == 0) {
+                if (randomEnemy < 50) {
+                    enemies[i].type = 0;
+                } else {
+                    enemies[i].type = 2;
+                    enemies[i].ticks = 0;
+                    enemies[i].playerDetected = 0;
+                }
+            } else if (mapIndex == 1) {
+                if (randomEnemy < 30) {
+                    enemies[i].type = 0;
+                } else if (randomEnemy < 60) {
+                    enemies[i].type = 2;
+                    enemies[i].ticks = 0;
+                    enemies[i].playerDetected = 0;
+                } else {
+                    enemies[i].type = 1;
+                    enemies[i].ticks = 0;
+                    enemies[i].playerDetected = 0;
+                }
+            }
+
+            enemies[i].alive = 1;
+            lastEnemySpawn = time(NULL);
+            break;
+        }
+    }
+}
+
+void enemyShoot(int enemyIndex, int plx, int ply) {
+    
+    if (enemies[enemyIndex].type == 1) {
+        int dx = (plx > enemies[enemyIndex].x) - (plx < enemies[enemyIndex].x);
+        int dy = (ply > enemies[enemyIndex].y) - (ply < enemies[enemyIndex].y);
+
+        int startX = enemies[enemyIndex].x + dx;
+        int startY = enemies[enemyIndex].y + dy;
+        int range = 5;  
+
+        screenSetColor(RED, BLACK);
+
+        for (int i = 0; i < range; i++) {
+        
+            for (int offset = -1; offset <= 1; offset++) {
+                int x = startX + dx * i;
+                if (dy != 0) {
+                    x += offset;
+                }
+
+                int y = startY + dy * i;
+                if (dx != 0) {
+                    y += offset;
+                } 
+
+            
+                if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) continue;
+
+            
+                if (maps[mapIndex][y][x] == '#') continue;
+
+            
+                screenGotoxy(x, y);
+                printf("*");
+                fflush(stdout);
+
+            
+                if ((x == player.x || x == player.x + 1) && y == player.y) {
+                    handlePlayerHit();
+                    break;
+                }
+            }
+
+        
+            usleep(25000);
+
+        
+            if (i > 0) {
+                for (int offset = -1; offset <= 1; offset++) {
+                    int x = startX + dx * (i-1);
+                    if (dy != 0) {
+                        x += offset;
+                    }
+
+                    int y = startY + dy * (i-1);
+                    if (dx != 0) {
+                        y += offset;
+                    }
+
+                
+                    if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) continue;
+
+                    screenGotoxy(x, y);
+                    printf(" ");
+                }
+            }
+            fflush(stdout);
+        }
+    } else if (enemies[enemyIndex].type == 2) {
+        
+        int dx = (plx > enemies[enemyIndex].x) - (plx < enemies[enemyIndex].x);
+        int dy = (ply > enemies[enemyIndex].y) - (ply < enemies[enemyIndex].y);
+        int range = 10;
+
+        int stepX = (dx == 0) ? 0 : (dx > 0 ? 1 : -1);
+        int stepY = (dy == 0) ? 0 : (dy > 0 ? 1 : -1);
+
+        int x = enemies[enemyIndex].x + stepX;
+        int y = enemies[enemyIndex].y + stepY;
+
+        char shotChar;
+        if (stepX == 0 || stepY == 0) {
+            shotChar = (stepX == 0) ? '|' : '-';
+        } else {
+            shotChar = (stepX == stepY) ? '\\' : '/';
+        }
+
+        screenSetColor(RED, BLACK);
+
+        for (int step = 0; step < range; step++) {
+            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT || maps[mapIndex][y][x] == '#') {
+                break;
+            }
+
+            screenGotoxy(x, y);
+            printf("%c", shotChar);
+            fflush(stdout);
+            usleep(25000);
+
+            if ((x == player.x || x == player.x + 1) && y == player.y) {
+                handlePlayerHit();
+                break;
+            }
+
+            screenGotoxy(x, y);
+            printf(" ");
+            fflush(stdout);
+
+            x += stepX;
+            y += stepY;
+        }
+    }
+
+    
+    screenDrawMap(mapIndex);
+    drawPlayer();
+    drawEnemies();
+    drawDrops();
+    if (mapIndex == 2) {
+        drawBoss(tanque.x, tanque.y);
+        drawBossHealthBar();
+    }
+}
+
+void drawBossHealthBar() {
+    int healthSegments = (tanque.health * BOSS_HEALTH_BAR_LENGTH) / 50; 
+    screenGotoxy(BOSS_HEALTH_BAR_X, BOSS_HEALTH_BAR_Y);
+
+    
+    if (tanque.health > 35) {
+        screenSetColor(GREEN, BLACK);
+    } else if (tanque.health > 15) {
+        screenSetColor(YELLOW, BLACK);
+    } else {
+        screenSetColor(RED, BLACK);
+    }
+
+    
+    printf("[");
+    for (int i = 0; i < BOSS_HEALTH_BAR_LENGTH; i++) {
+        if (i < healthSegments) {
+            printf("=");
+        } else {
+            printf(" ");
+        }
+    }
+    printf("] %d/50", tanque.health);  
+    fflush(stdout);
+}
+
+void moveBoss() {
+    if (tanque.cooldown > 0) {
+        tanque.cooldown--;
+        return;
+    }
+
+    if (tanque.health <= 0) {
+        return;
+    }
+
+    if (tanque.move == 1) {
+        if (tanque.tick == 3 || tanque.tick == 5 || tanque.tick == 7) {
+            tripleBossShoot(5);
+        } else if (tanque.tick == 9) {
+            tanque.cooldown = 3;
+            tanque.tick = 0;
+            tanque.move = 2;
+        }
+        tanque.tick += 1;
+
+    } else if (tanque.move == 2) {
+        if (tanque.tick == 3 ) {
+            bossShockwave();
+        } else if (tanque.tick == 4) {
+            tanque.cooldown = 3;
+            tanque.tick = 0;
+            tanque.move = 3;
+        }
+        tanque.tick += 1;
+
+    } else if (tanque.move == 3) {
+        if (tanque.tick == 3 || tanque.tick == 7 || tanque.tick == 11) {
+            tripleBossShoot(1);  
+        } else if (tanque.tick == 4 || tanque.tick == 8) {
+            tripleBossShoot(3);  
+        } else if (tanque.tick == 5 || tanque.tick == 9) {
+            tripleBossShoot(2);  
+        } else if (tanque.tick == 6 || tanque.tick == 10) {
+            tripleBossShoot(4);  
+        } else if (tanque.tick == 12) {
+            tanque.cooldown = 3;
+            tanque.tick = 0;
+            tanque.move = 1;
+        }
+        tanque.tick += 1;
+    }
+
+    drawBoss(tanque.x, tanque.y);
+    drawBossHealthBar();
 }
 
 void tripleBossShoot(int direction) {
@@ -1252,6 +1393,160 @@ void tripleBossShoot(int direction) {
     drawBoss(tanque.x, tanque.y);
     drawBossHealthBar();
 }
+void bossShockwave() {
+    int range = MAP_WIDTH/2; 
+    int startX = tanque.x;
+    int startY = tanque.y;
+
+
+    for (int r = 1; r < range; r++) {
+        
+        for (int dx = -r; dx <= r; dx++) {
+            int x1 = startX + dx;
+            int y1 = startY + (r - abs(dx));
+            int y2 = startY - (r - abs(dx));
+
+            
+            if ((x1 >= 2 && x1 <= 10 || x1 >= 43 && x1 <= 54) && (y1 >= 4 && y1 <= 7 || y1 >= 14 && y1 <= 20)) {
+                continue;
+            }
+            if ((x1 >= 2 && x1 <= 10|| x1>=43 && x1<=54 )  && (y2 >= 4 && y2 <= 7 || y2 >= 14 && y2 <= 20)) {
+                continue;
+            }
+
+            
+            if (x1 >= 0 && x1 < MAP_WIDTH && y1 >= 0 && y1 < MAP_HEIGHT && maps[mapIndex][y1][x1] != '#') {
+                screenGotoxy(x1, y1);
+                screenSetColor(RED, BLACK);
+
+                printf("*"); 
+                fflush(stdout);
+                if (x1 == player.x && y1 == player.y) {
+                    handlePlayerHit();
+                }
+            }
+            if (x1 >= 0 && x1 < MAP_WIDTH && y2 >= 0 && y2 < MAP_HEIGHT && maps[mapIndex][y2][x1] != '#') {
+                screenGotoxy(x1, y2);
+                screenSetColor(RED, BLACK);
+                printf("*");
+                fflush(stdout);
+                if (x1 == player.x && y2 == player.y) {
+                    handlePlayerHit();
+                }
+            }
+        }
+        usleep(12500); 
+        screenDrawMap(mapIndex);
+        drawPlayer();
+        drawEnemies();
+        drawDrops();
+        drawBoss(tanque.x, tanque.y);
+        drawBossHealthBar();
+    }
+}
+
+void movePlayer(int dx, int dy) {
+    int newX = player.x + dx;
+    int newY = player.y + dy;
+
+    lastdx = dx;
+    lastdy = dy;
+
+    
+    int colideComTanque = 0;
+    if (mapIndex == 2) {
+        int tanqueX = tanque.x - bossWidth / 2;
+        int tanqueY = tanque.y - bossHeight / 2;
+
+        colideComTanque = (newX >= tanqueX && newX < tanqueX + bossWidth &&
+                           newY >= tanqueY && newY < tanqueY + bossHeight) ||
+                          (newX + 1 >= tanqueX && newX + 1 < tanqueX + bossWidth &&
+                           newY >= tanqueY && newY < tanqueY + bossHeight);
+    }
+
+    if (ghostMode == 1) {
+        if ((maps[mapIndex][newY][newX] == '#') ||
+        (maps[mapIndex][newY][newX + 1] == '#') &&
+        !(maps[mapIndex][newY][newX] == maps[mapIndex][MAP_HEIGHT][MAP_WIDTH]) &&
+        !(maps[mapIndex][newY][newX + 1] == maps[mapIndex][MAP_HEIGHT][MAP_WIDTH]) &&
+        !(maps[mapIndex][newY][newX] == maps[mapIndex][1][1]) &&
+        !(maps[mapIndex][newY][newX + 1] == maps[mapIndex][1][1])) {
+            if (dx == -1) {
+                dx = -2;
+            }
+            newX += dx;
+            newY += dy;
+        } else if (maps[mapIndex][newY][newX + 1] == '#' && dx == 1) {
+            newX += 2;
+        }
+    }
+
+    if ((maps[mapIndex][newY][newX] != '#') &&
+        !isOccupiedByEnemy(newX, newY) &&
+        (maps[mapIndex][newY][newX + 1] != '#') &&
+        !isOccupiedByEnemy(newX + 1, newY) &&
+        !colideComTanque) {
+
+        screenGotoxy(player.x, player.y);
+        printf(" ");
+
+        player.x = newX;
+        player.y = newY;
+
+        
+        for (int i = 0; i < MAX_ENEMIES; i++) {
+            if (drops[i].active &&
+               (drops[i].x == player.x || drops[i].x == player.x + 1) &&
+                drops[i].y == player.y) {
+
+                if (player.mask == 0) {
+                    if (drops[i].type == 1 && player.clips < 3) {
+                        player.clips++;
+                    } else if (drops[i].type == 2 && player.health < 3) {
+                        player.health++;
+                    }
+                } else if (player.mask == 1) {
+                    if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
+                        player.clips++;
+                    } else if (drops[i].type == 2 && player.health < PLAYER_MAX_HEALTH) {
+                        player.health++;
+                    }
+                } else if (player.mask == 2) {
+                    if (drops[i].type == 1 && player.clips < MAX_CLIPS) {
+                        player.clips++;
+                    } else if (drops[i].type == 2 && player.health < 3) {
+                        player.health++;
+                    }
+                }
+
+                if (drops[i].type == 3) {
+                  player.hasShotgun = 1;
+                  player.currentWeapon = 1;
+                  if (player.ammo == MAX_AMMO && ((player.mask == 0) ? player.clips < 3 : player.clips > MAX_CLIPS)) {
+                    player.clips++;
+                  } else if (player.ammo < MAX_AMMO) {
+                    player.ammo = MAX_AMMO;
+                  }
+                } else if (drops[i].type == 4) {
+                  player.hasWeapon = 1;
+                  player.currentWeapon = 0;
+                  if (player.ammo == MAX_AMMO && ((player.mask == 0) ? player.clips < 3 : player.clips > MAX_CLIPS)) {
+                    player.clips++;
+                  } else if (player.ammo < MAX_AMMO) {
+                    player.ammo = MAX_AMMO;
+                  }
+                }
+
+                drops[i].active = 0;
+                screenGotoxy(drops[i].x, drops[i].y);
+                printf(" ");
+            }
+        }
+    }
+
+    drawPlayer();
+    drawHUD();
+}
 
 
 void handlePlayerHit() {
@@ -1263,127 +1558,6 @@ void handlePlayerHit() {
     drawPlayer();
     player.health--;
     drawHUD();
-}
-
-void drawBossHealthBar() {
-    int healthSegments = (tanque.health * BOSS_HEALTH_BAR_LENGTH) / 50; 
-    screenGotoxy(BOSS_HEALTH_BAR_X, BOSS_HEALTH_BAR_Y);
-
-    
-    if (tanque.health > 35) {
-        screenSetColor(GREEN, BLACK);
-    } else if (tanque.health > 15) {
-        screenSetColor(YELLOW, BLACK);
-    } else {
-        screenSetColor(RED, BLACK);
-    }
-
-    
-    printf("[");
-    for (int i = 0; i < BOSS_HEALTH_BAR_LENGTH; i++) {
-        if (i < healthSegments) {
-            printf("=");
-        } else {
-            printf(" ");
-        }
-    }
-    printf("] %d/50", tanque.health);  
-    fflush(stdout);
-}
-
-void moveBoss() {
-    if (tanque.cooldown > 0) {
-        tanque.cooldown--;
-        return;
-    }
-
-    if (tanque.health <= 0) {
-        return;
-    }
-
-    if (tanque.move == 1) {
-        if (tanque.tick == 3 || tanque.tick == 5 || tanque.tick == 7) {
-            tripleBossShoot(5);
-        } else if (tanque.tick == 9) {
-            tanque.cooldown = 3;
-            tanque.tick = 0;
-            tanque.move = 2;
-        }
-        tanque.tick += 1;
-
-    } else if (tanque.move == 2) {
-        if (tanque.tick == 3 ) {
-            bossShockwave();
-        } else if (tanque.tick == 4) {
-            tanque.cooldown = 3;
-            tanque.tick = 0;
-            tanque.move = 3;
-        }
-        tanque.tick += 1;
-
-    } else if (tanque.move == 3) {
-        if (tanque.tick == 3 || tanque.tick == 7 || tanque.tick == 11) {
-            tripleBossShoot(1);  
-        } else if (tanque.tick == 4 || tanque.tick == 8) {
-            tripleBossShoot(3);  
-        } else if (tanque.tick == 5 || tanque.tick == 9) {
-            tripleBossShoot(2);  
-        } else if (tanque.tick == 6 || tanque.tick == 10) {
-            tripleBossShoot(4);  
-        } else if (tanque.tick == 12) {
-            tanque.cooldown = 3;
-            tanque.tick = 0;
-            tanque.move = 1;
-        }
-        tanque.tick += 1;
-    }
-
-    drawBoss(tanque.x, tanque.y);
-    drawBossHealthBar();
-}
-
-void spawnEnemies() {
-    if (difftime(time(NULL), lastEnemySpawn) < ENEMY_RESPAWN_INTERVAL || mapIndex == 2) return;
-    int randomEnemy = rand() % 100;
-
-    for (int i = 0; i < MAX_ENEMIES; i++) {
-        if (!enemies[i].alive) {
-            int spawnX, spawnY;
-            do {
-                spawnX = rand() % MAP_WIDTH;
-                spawnY = rand() % MAP_HEIGHT;
-            } while (isOccupiedByEnemy(spawnX, spawnY) || abs(spawnX - player.x) < 5 || abs(spawnY - player.y) < 5 || maps[mapIndex][spawnY][spawnX] == '#' || spawnX == porta_x && spawnY == porta_y);
-
-            enemies[i].x = spawnX;
-            enemies[i].y = spawnY;
-
-            if (mapIndex == 0) {
-                if (randomEnemy < 50) {
-                    enemies[i].type = 0;
-                } else {
-                    enemies[i].type = 2;
-                    enemies[i].moves = 0;
-                    enemies[i].playerDetected = 0;
-                }
-            } else if (mapIndex == 1) {
-                if (randomEnemy < 30) {
-                    enemies[i].type = 0;
-                } else if (randomEnemy < 60) {
-                    enemies[i].type = 2;
-                    enemies[i].moves = 0;
-                    enemies[i].playerDetected = 0;
-                } else {
-                    enemies[i].type = 1;
-                    enemies[i].moves = 0;
-                    enemies[i].playerDetected = 0;
-                }
-            }
-
-            enemies[i].alive = 1;
-            lastEnemySpawn = time(NULL);
-            break;
-        }
-    }
 }
 
 void showAttackFeedback() {
@@ -1637,8 +1811,15 @@ void playerShotgunShoot(int dx, int dy) {
     for (int i = 0; i < range; i++) {
         
         for (int offset = -1; offset <= 1; offset++) {
-            int x = startX + dx * i + (dy == 0 ? 0 : offset);  
-            int y = startY + dy * i + (dx == 0 ? 0 : offset);  
+            int x = startX + dx * i;
+            if (dy != 0) {
+                x += offset;
+            }
+
+            int y = startY + dy * i;
+            if (dx != 0) {
+                y += offset;
+            } 
 
             
             if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) continue;
@@ -1646,7 +1827,6 @@ void playerShotgunShoot(int dx, int dy) {
             
             if (maps[mapIndex][y][x] == '#') continue;
 
-            
             screenGotoxy(x, y);
             printf("*");
             fflush(stdout);
@@ -1686,8 +1866,15 @@ void playerShotgunShoot(int dx, int dy) {
         
         if (i > 0) {
             for (int offset = -1; offset <= 1; offset++) {
-                int x = startX + dx * (i - 1) + (dy == 0 ? 0 : offset);
-                int y = startY + dy * (i - 1) + (dx == 0 ? 0 : offset);
+                int x = startX + dx * (i - 1);
+                if (dy != 0) {
+                    x += offset;
+                }
+
+                int y = startY + dy * (i - 1);
+                if (dx != 0) {
+                    y += offset;
+                }
 
                 
                 if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) continue;
@@ -1710,175 +1897,11 @@ void playerShotgunShoot(int dx, int dy) {
     }
 }
 
-void enemyShoot(int enemyIndex, int plx, int ply) {
-    
-    if (enemies[enemyIndex].type == 1) {
-        int dx = (plx > enemies[enemyIndex].x) - (plx < enemies[enemyIndex].x);
-        int dy = (ply > enemies[enemyIndex].y) - (ply < enemies[enemyIndex].y);
-
-        int startX = (dx == 1 && dy == 0) ? 1 + enemies[enemyIndex].x + dx : enemies[enemyIndex].x + dx;
-        int startY = enemies[enemyIndex].y + dy;
-        int range = 5;  
-
-        screenSetColor(RED, BLACK);
-
-        for (int i = 0; i < range; i++) {
-        
-            for (int offset = -1; offset <= 1; offset++) {
-                int x = startX + dx * i + (dy == 0 ? 0 : offset);  
-                int y = startY + dy * i + (dx == 0 ? 0 : offset);  
-
-            
-                if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) continue;
-
-            
-                if (maps[mapIndex][y][x] == '#') continue;
-
-            
-                screenGotoxy(x, y);
-                printf("*");
-                fflush(stdout);
-
-            
-                if ((x == player.x || x == player.x + 1) && y == player.y) {
-                    handlePlayerHit();
-                    break;
-                }
-            }
-
-        
-            usleep(25000);
-
-        
-            if (i > 0) {
-                for (int offset = -1; offset <= 1; offset++) {
-                    int x = startX + dx * (i - 1) + (dy == 0 ? 0 : offset);
-                    int y = startY + dy * (i - 1) + (dx == 0 ? 0 : offset);
-
-                
-                    if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) continue;
-
-                    screenGotoxy(x, y);
-                    printf(" ");
-                }
-            }
-            fflush(stdout);
-        }
-    } else if (enemies[enemyIndex].type == 2) {
-        
-        int dx = plx - enemies[enemyIndex].x;
-        int dy = ply - enemies[enemyIndex].y;
-
-        int range = 10;
-
-        int stepX = (dx == 0) ? 0 : (dx > 0 ? 1 : -1);
-        int stepY = (dy == 0) ? 0 : (dy > 0 ? 1 : -1);
-
-        int x = enemies[enemyIndex].x + stepX;
-        int y = enemies[enemyIndex].y + stepY;
-
-        char shotChar;
-        if (stepX == 0 || stepY == 0) {
-            shotChar = (stepX == 0) ? '|' : '-';
-        } else {
-            shotChar = (stepX == stepY) ? '\\' : '/';
-        }
-
-        screenSetColor(RED, BLACK);
-
-        for (int step = 0; step < range; step++) {
-            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT || maps[mapIndex][y][x] == '#') {
-                break;
-            }
-
-            screenGotoxy(x, y);
-            printf("%c", shotChar);
-            fflush(stdout);
-            usleep(25000);
-
-            if ((x == player.x || x == player.x + 1) && y == player.y) {
-                handlePlayerHit();
-                break;
-            }
-
-            screenGotoxy(x, y);
-            printf(" ");
-            fflush(stdout);
-
-            x += stepX;
-            y += stepY;
-        }
-    }
-
-    
-    screenDrawMap(mapIndex);
-    drawPlayer();
-    drawEnemies();
-    drawDrops();
-    if (mapIndex == 2) {
-        drawBoss(tanque.x, tanque.y);
-        drawBossHealthBar();
-    }
-}
-
 void reload() {
     if (player.clips > 0 && player.ammo < MAX_AMMO) {
         player.ammo = MAX_AMMO;
         player.clips--;
         drawHUD();
-    }
-}
-
-void bossShockwave() {
-    int range = (MAP_WIDTH > MAP_HEIGHT) ? MAP_WIDTH : MAP_HEIGHT; 
-    int startX = tanque.x;
-    int startY = tanque.y;
-
-
-
-    for (int r = 1; r < range; r++) {
-        
-        for (int dx = -r; dx <= r; dx++) {
-            int x1 = startX + dx;
-            int y1 = startY + (r - abs(dx));
-            int y2 = startY - (r - abs(dx));
-
-            
-            if ((x1 >= 2 && x1 <= 10 || x1 >= 43 && x1 <= 54) && (y1 >= 4 && y1 <= 7 || y1 >= 14 && y1 <= 20)) {
-                continue;
-            }
-            if ((x1 >= 2 && x1 <= 10|| x1>=43 && x1<=54 )  && (y2 >= 4 && y2 <= 7 || y2 >= 14 && y2 <= 20)) {
-                continue;
-            }
-
-            
-            if (x1 >= 0 && x1 < MAP_WIDTH && y1 >= 0 && y1 < MAP_HEIGHT && maps[mapIndex][y1][x1] != '#') {
-                screenGotoxy(x1, y1);
-                screenSetColor(RED, BLACK);
-
-                printf("*"); 
-                fflush(stdout);
-                if ((x1 == player.x || x1 == player.x) && y1 == player.y) {
-                    handlePlayerHit();
-                }
-            }
-            if (x1 >= 0 && x1 < MAP_WIDTH && y2 >= 0 && y2 < MAP_HEIGHT && maps[mapIndex][y2][x1] != '#') {
-                screenGotoxy(x1, y2);
-                screenSetColor(RED, BLACK);
-                printf("*");
-                fflush(stdout);
-                if ((x1 == player.x || x1 == player.x) && y2 == player.y) {
-                    handlePlayerHit();
-                }
-            }
-        }
-        usleep(12500); 
-        screenDrawMap(mapIndex);
-        drawPlayer();
-        drawEnemies();
-        drawDrops();
-        drawBoss(tanque.x, tanque.y);
-        drawBossHealthBar();
     }
 }
 
