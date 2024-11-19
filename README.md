@@ -66,8 +66,14 @@ cd Hotline-Recife/
 ```
 
 3º)  Instalar SDL
+Para Linux (Ubuntu/Debian):
 ```
 sudo apt install libsdl2-dev libsdl2-mixer-dev
+```
+Para macOS:
+Certifique-se de ter o Homebrew instalado, depois execute:
+```
+brew install sdl2 sdl2_mixer
 ```
 
 4º)  Compile os arquivos
