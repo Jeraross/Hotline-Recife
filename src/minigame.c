@@ -272,11 +272,9 @@ void startMinigame() {
 }
 
 void resetGameState() {
-    // Resetando jogador
     car_player.x = 7;
     car_player.y = MAP_START_Y + 4;
 
-    // Resetando inimigos
     for (int i = 0; i < MAX_CAR_ENEMIES; i++) {
         car_enemies[i].x = 0;
         car_enemies[i].y = 0;
@@ -284,12 +282,10 @@ void resetGameState() {
         car_enemies[i].color = 0;
     }
 
-    // Resetando lua
     moon.x = 0;
     moon.y = 0;
     moon.active = 0;
 
-    // Resetando contadores e flags
     minimap = 0;
     finishgame = 0;
 }
