@@ -127,7 +127,7 @@ const char* mapMusicFiles[NUM_MAPS] = {
 
 
 const char* menuMusicFile = "music/MENU.mp3";  
-const char* minigameMusicFile = "music/MINIGAME.mp3";  
+const char* minigameMusicFile = "music/MINIGAME.mp3";
 const char* GAMEOVERR = "music/SADGAME.mp3";  
 
 int initSDL();
@@ -476,24 +476,51 @@ void drawHUD() {
 
 
 void drawComboHUD() {
+    static int colorChangeCounter = 0; // Contador estático para controlar a mudança de cor
+    int hudX = MAP_WIDTH + 1;         // Ajuste conforme o tamanho do mapa
+    int hudY = 1;                     // Linha superior do mapa
+
     if (combo < 2) {
-        
-        screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
-        printf("                      "); 
-        fflush(stdout);
+        screenGotoxy(hudX, hudY);
+        printf("                                         ");
+        screenGotoxy(hudX, hudY + 1);
+        printf("                                         ");
+        screenGotoxy(hudX, hudY + 2);
+        printf("                                         ");
+        screenGotoxy(hudX, hudY + 3);
+        printf("                                         ");
+        screenGotoxy(hudX, hudY + 5);
+        printf("                                         ");
         return;
     }
 
-    
-    comboColorIndex = (comboColorIndex + 1) % 3;  
+    // Controla a frequência de mudança de cor
+    colorChangeCounter++;
+    if (colorChangeCounter >= 100) { // Altere o valor para ajustar a rapidez (maior valor = mudança mais lenta)
+        comboColorIndex = (comboColorIndex + 1) % 3;
+        colorChangeCounter = 0;
+    }
+
+    // Atualiza a cor do HUD de combo
     screenSetColor(comboColors[comboColorIndex], BLACK);
 
-    screenGotoxy(COMBO_HUD_X, COMBO_HUD_Y);
+    // Define o tempo restante para o combo
     int remainingTime = 5 - (int)difftime(time(NULL), comboStartTime);
-    printf("COMBO X%d   TIMER %d ", combo, remainingTime);
 
+    // Desenha o texto ASCII no lado direito
+    screenGotoxy(hudX, hudY);
+    printf("  _________  __  ______   ____    ");
+    screenGotoxy(hudX, hudY + 1);
+    printf(" / ___/ __ \\/  |/  / _ ) / __ \\ ");
+    screenGotoxy(hudX, hudY + 2);
+    printf("/ /__/ /_/ / /|_/ / _  // /_/ /   ");
+    screenGotoxy(hudX, hudY + 3);
+    printf("\\___/\\____/_/  /_/_____/\\____/");
+    screenGotoxy(hudX, hudY + 5);
+    printf("X%d   TIMER %d ", combo, remainingTime);
     fflush(stdout);
 }
+
 
 void drawPlayer() {
     screenSetColor(COLOR_PLAYER, BLACK);
@@ -713,7 +740,7 @@ void moveEnemies() {
             if (!enemies[i].playerDetected) {
                 
                 for (int x = enemies[i].x + 1; x < MAP_WIDTH && maps[mapIndex][enemies[i].y][x] != '#'; x++) {
-                    if ((x == player.x || x == player.x + 1) && enemies[i].y == player.y) {
+                    if (x == player.x && enemies[i].y == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -721,7 +748,7 @@ void moveEnemies() {
                     }
                 }
                 for (int x = enemies[i].x - 1; x >= 0 && maps[mapIndex][enemies[i].y][x] != '#'; x--) {
-                    if ((x == player.x || x == player.x + 1) && enemies[i].y == player.y) {
+                    if (x == player.x && enemies[i].y == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -731,7 +758,7 @@ void moveEnemies() {
 
                 
                 for (int y = enemies[i].y + 1; y < MAP_HEIGHT && maps[mapIndex][y][enemies[i].x] != '#'; y++) {
-                    if ((enemies[i].x == player.x || enemies[i].x == player.x + 1) && y == player.y) {
+                    if (enemies[i].x == player.x && y == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -739,7 +766,7 @@ void moveEnemies() {
                     }
                 }
                 for (int y = enemies[i].y - 1; y >= 0 && maps[mapIndex][y][enemies[i].x] != '#'; y--) {
-                    if ((enemies[i].x == player.x || enemies[i].x == player.x + 1) && y == player.y) {
+                    if (enemies[i].x == player.x && y == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -750,7 +777,7 @@ void moveEnemies() {
                 
                 int dx, dy;
                 for (dx = 1, dy = 1; enemies[i].x + dx < MAP_WIDTH && enemies[i].y + dy < MAP_HEIGHT && maps[mapIndex][enemies[i].y + dy][enemies[i].x + dx] != '#'; dx++, dy++) {
-                    if ((enemies[i].x + dx == player.x || enemies[i].x + dx == player.x + 1) && enemies[i].y + dy == player.y) {
+                    if (enemies[i].x + dx == player.x && enemies[i].y + dy == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -758,7 +785,7 @@ void moveEnemies() {
                     }
                 }
                 for (dx = -1, dy = 1; enemies[i].x + dx >= 0 && enemies[i].y + dy < MAP_HEIGHT && maps[mapIndex][enemies[i].y + dy][enemies[i].x + dx] != '#'; dx--, dy++) {
-                    if ((enemies[i].x + dx == player.x || enemies[i].x + dx == player.x + 1) && enemies[i].y + dy == player.y) {
+                    if (enemies[i].x + dx == player.x && enemies[i].y + dy == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -766,7 +793,7 @@ void moveEnemies() {
                     }
                 }
                 for (dx = 1, dy = -1; enemies[i].x + dx < MAP_WIDTH && enemies[i].y + dy >= 0 && maps[mapIndex][enemies[i].y + dy][enemies[i].x + dx] != '#'; dx++, dy--) {
-                    if ((enemies[i].x + dx == player.x || enemies[i].x + dx == player.x + 1) && enemies[i].y + dy == player.y) {
+                    if (enemies[i].x + dx == player.x && enemies[i].y + dy == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
@@ -774,7 +801,7 @@ void moveEnemies() {
                     }
                 }
                 for (dx = -1, dy = -1; enemies[i].x + dx >= 0 && enemies[i].y + dy >= 0 && maps[mapIndex][enemies[i].y + dy][enemies[i].x + dx] != '#'; dx--, dy--) {
-                    if ((enemies[i].x + dx == player.x || enemies[i].x + dx == player.x + 1) && enemies[i].y + dy == player.y) {
+                    if (enemies[i].x + dx == player.x && enemies[i].y + dy == player.y) {
                         enemies[i].px = player.x;
                         enemies[i].py = player.y;
                         enemies[i].playerDetected = 1;
